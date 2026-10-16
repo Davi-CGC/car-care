@@ -12,7 +12,7 @@
     <div class="brand">
       <img src="imagens/logo.png" alt="Logo CarCare">
       <h1>Car<span>Care</span></h1>
-      <span class="badge">Manual Técnico AV1</span>
+      <span class="badge">Documentação Técnica</span>
     </div>
     <div>
       <span style="font-size: 0.9rem; color: #9ca3af;">Flutter &amp; Dart • Firebase</span>
@@ -29,38 +29,43 @@
         <li><a href="#tecnologias">3. Tecnologias Utilizadas</a></li>
       </ul>
 
-      <h3>Instalação e Configuração</h3>
+      <h3>Instalação e Deploy</h3>
       <ul>
         <li><a href="#requisitos">4. Requisitos de Ambiente</a></li>
         <li><a href="#passo-a-passo">5. Passo a Passo de Instalação</a></li>
         <li><a href="#firebase-setup">6. Configuração do Firebase</a></li>
+        <li><a href="#deploy-vercel">7. Como Rodar e Publicar na Web (Vercel)</a></li>
       </ul>
 
       <h3>Arquitetura do Software</h3>
       <ul>
-        <li><a href="#estrutura-pastas">7. Estrutura de Pastas</a></li>
-        <li><a href="#banco-de-dados">8. Estrutura do Banco (Firestore)</a></li>
-        <li><a href="#regras-seguranca">9. Regras de Segurança</a></li>
+        <li><a href="#estrutura-pastas">8. Estrutura de Pastas</a></li>
+        <li><a href="#banco-de-dados">9. Estrutura do Banco (Firestore)</a></li>
+        <li><a href="#regras-seguranca">10. Regras de Segurança</a></li>
       </ul>
 
       <h3>Telas e Funcionalidades</h3>
       <ul>
-        <li><a href="#telas-autenticacao">10. Login e Cadastro</a></li>
-        <li><a href="#tela-principal">11. Tela Principal (Home)</a></li>
-        <li><a href="#crud-veiculos">12. CRUD de Veículos &amp; FIPE</a></li>
-        <li><a href="#crud-manutencoes">13. Manutenções &amp; Alertas</a></li>
-        <li><a href="#crud-abastecimentos">14. Abastecimento &amp; Consumo</a></li>
+        <li><a href="#telas-autenticacao">11. Login e Cadastro</a></li>
+        <li><a href="#tela-principal">12. Tela Principal &amp; 5 Abas</a></li>
+        <li><a href="#crud-veiculos">13. Veículos, FIPE &amp; Rodízio</a></li>
+        <li><a href="#crud-manutencoes">14. Manutenções &amp; Edição</a></li>
+        <li><a href="#crud-abastecimentos">15. Abastecimento, GNV &amp; Odômetro</a></li>
+        <li><a href="#termometro-consumo">16. Termômetro de Consumo</a></li>
+        <li><a href="#graficos-relatorios">17. Gráficos de Colunas &amp; Relatórios</a></li>
+        <li><a href="#diario-de-bordo">18. Diário de Bordo (Log do Veículo)</a></li>
+        <li><a href="#central-faq">19. Central de Dúvidas (FAQ)</a></li>
       </ul>
 
       <h3>Guia de Manutenção Contínua</h3>
       <ul>
-        <li><a href="#alterar-cores">15. Como Alterar Cores</a></li>
-        <li><a href="#trocar-logo">16. Como Trocar o Logo</a></li>
-        <li><a href="#alterar-nome">17. Como Alterar o Nome</a></li>
-        <li><a href="#adicionar-tela">18. Como Adicionar Nova Tela</a></li>
-        <li><a href="#adicionar-campo">19. Alterar Campo no Banco</a></li>
-        <li><a href="#gerar-versao">20. Gerar Nova Versão (Build)</a></li>
-        <li><a href="#solucao-problemas">21. Solução de Problemas Comuns</a></li>
+        <li><a href="#alterar-cores">20. Como Alterar Cores</a></li>
+        <li><a href="#trocar-logo">21. Como Trocar o Logo</a></li>
+        <li><a href="#alterar-nome">22. Como Alterar o Nome</a></li>
+        <li><a href="#adicionar-tela">23. Como Adicionar Nova Tela</a></li>
+        <li><a href="#adicionar-campo">24. Alterar Campo no Banco</a></li>
+        <li><a href="#gerar-versao">25. Gerar Nova Versão (Build)</a></li>
+        <li><a href="#solucao-problemas">26. Solução de Problemas Comuns</a></li>
       </ul>
     </aside>
 
@@ -71,21 +76,21 @@
       <section id="apresentacao">
         <div class="hero-card">
           <h2>CarCare — Manual Técnico do Desenvolvedor</h2>
-          <p>Documentação arquitetural, operacional e guia prático para desenvolvedores manterem e expandirem o ecossistema CarCare.</p>
+          <p>Documentação arquitetural, operacional e guia prático para desenvolvedores manterem, publicarem e expandirem o ecossistema CarCare.</p>
         </div>
-        <p>O <strong>CarCare</strong> é um aplicativo completo construído em Flutter e Dart, desenhado para gerenciamento abrangente de manutenção veicular para <strong>carros</strong> e <strong>motocicletas</strong>. O produto integra persistência em nuvem em tempo real com o <strong>Google Firebase</strong> (Authentication e Cloud Firestore) e consulta direta aos valores médios de mercado via <strong>API da Tabela FIPE</strong>.</p>
+        <p>O <strong>CarCare</strong> é um produto de software construído com Flutter e Dart, desenhado para gerenciamento preventivo e controle de custos de <strong>carros</strong> e <strong>motocicletas</strong>. O sistema integra persistência em nuvem em tempo real com o <strong>Google Firebase</strong> (Authentication e Cloud Firestore), consulta em tempo real à <strong>API da Tabela FIPE</strong>, relatórios analíticos em gráficos de colunas, diário de bordo e alertas municipais de rodízio veicular.</p>
       </section>
 
       <!-- 2. Objetivo e Público-Alvo -->
       <section id="objetivo">
         <h2>2. Objetivo e Público-Alvo</h2>
         <h3>Objetivo do Software</h3>
-        <p>Eliminar o esquecimento de manutenções preventivas, monitorar o consumo real de combustível por quilômetro rodado e centralizar os custos com o veículo, emitindo alertas inteligentes conforme a quilometragem atual avança em relação aos limites de troca de óleo, freios, filtros, transmissão e pneus.</p>
+        <p>Eliminar o esquecimento de manutenções preventivas, monitorar o consumo real de combustível por quilômetro rodado (km/l ou km/m³ no GNV), centralizar os custos operacionais do veículo e emitir alertas inteligentes conforme o odômetro avança em relação aos limites de troca de óleo, freios, filtros, transmissão e pneus.</p>
         <h3>Público-Alvo</h3>
         <ul>
           <li>Proprietários individuais de carros e motos que desejam controle preventivo de custos.</li>
           <li>Motoristas de aplicativo e entregadores que necessitam de acompanhamento rigoroso de consumo e trocas periódicas.</li>
-          <li>Entusiastas e gestores de pequenas frotas domésticas.</li>
+          <li>Entusiastas e gestores de veículos que buscam histórico unificado e valorização do patrimônio.</li>
         </ul>
       </section>
 
@@ -107,7 +112,7 @@
           </div>
           <div class="card">
             <h4>API Tabela FIPE</h4>
-            <p>Integração REST com a API pública FIPE (Parallelum) para marcas, modelos, anos e valor venal atualizado.</p>
+            <p>Integração REST com a API pública FIPE (Parallelum) para marcas, modelos, anos e cotação de mercado atualizada.</p>
           </div>
         </div>
       </section>
@@ -117,9 +122,9 @@
         <h2>4. Requisitos para Executar o Projeto</h2>
         <ul>
           <li><strong>Flutter SDK:</strong> versão 3.19 ou superior (testado com Flutter 3.47 / Dart 3.13).</li>
-          <li><strong>Git:</strong> para versionamento e controle de branches.</li>
+          <li><strong>Git:</strong> para versionamento e controle de código.</li>
           <li><strong>Navegador Google Chrome</strong> (para execução web rápida) ou <strong>Android Studio / VS Code</strong> com emulador/aparelho físico.</li>
-          <li><strong>Node.js &amp; Firebase CLI</strong> (para comandos do FlutterFire): <code>npm install -g firebase-tools</code>.</li>
+          <li><strong>Node.js &amp; Firebase CLI</strong> (opcional): <code>npm install -g firebase-tools</code>.</li>
         </ul>
       </section>
 
@@ -134,8 +139,9 @@ cd carcare</code></pre>
           <li>Instale todas as dependências do Flutter:
             <pre><code>flutter pub get</code></pre>
           </li>
-          <li>Execute o projeto no navegador ou emulador:
+          <li>Execute o projeto no navegador Chrome:
             <pre><code>flutter run -d chrome</code></pre>
+            <em>(Dica no Windows: use o atalho <code>.\run</code> na raiz do projeto)</em>
           </li>
         </ol>
       </section>
@@ -143,157 +149,231 @@ cd carcare</code></pre>
       <!-- 6. Configuração do Firebase -->
       <section id="firebase-setup">
         <h2>6. Configuração do Firebase</h2>
-        <p>O projeto já possui os arquivos pré-configurados pela CLI oficial (<code>flutterfire configure</code>). Caso precise conectar a outro projeto Firebase do zero:</p>
+        <p>O projeto já possui os arquivos pré-configurados pela CLI oficial (<code>firebase_options.dart</code>). Caso precise conectar a outro projeto Firebase:</p>
         <ol>
-          <li>Acesse o <a href="https://console.firebase.google.com" target="_blank">Console do Firebase</a> e crie um projeto (ex: <code>meu-carcare</code>).</li>
+          <li>Acesse o <a href="https://console.firebase.google.com" target="_blank">Console do Firebase</a> e crie um projeto (ex: <code>car-care-5c6cf</code>).</li>
           <li>Ative o <strong>Authentication</strong> &rarr; <em>Sign-in method</em> &rarr; <strong>E-mail/senha</strong>.</li>
           <li>Crie o <strong>Firestore Database</strong> no modo de produção, na região <code>southamerica-east1 (São Paulo)</code>.</li>
-          <li>Na aba <strong>Regras (Rules)</strong> do Firestore, copie e cole o conteúdo do arquivo <code>firestore.rules</code> do projeto e clique em <strong>Publicar</strong>.</li>
-          <li>No terminal, configure as credenciais da aplicação executando:
+          <li>Na aba <strong>Regras (Rules)</strong> do Firestore, publique o conteúdo de <code>firestore.rules</code>.</li>
+          <li>Execute a CLI oficial do FlutterFire:
             <pre><code>dart pub global run flutterfire_cli:flutterfire configure</code></pre>
           </li>
         </ol>
       </section>
 
-      <!-- 7. Estrutura de Pastas -->
+      <!-- 7. Deploy Web (Vercel e Hospedagem) -->
+      <section id="deploy-vercel">
+        <h2>7. Como Rodar e Publicar na Web (Vercel / Firebase Hosting)</h2>
+        <p>Ao compilar o Flutter para web, ele gera arquivos estáticos puros (HTML, JavaScript, WebAssembly e assets) na pasta <code>build/web</code>. Isso significa que o aplicativo pode ser hospedado na <strong>Vercel</strong>, <strong>Firebase Hosting</strong>, <strong>Netlify</strong> ou <strong>GitHub Pages</strong> e funcionará em <strong>qualquer celular ou computador com internet</strong> sem precisar instalar nada na loja de aplicativos!</p>
+
+        <h3>Deploy na Vercel (Passo a Passo)</h3>
+        <ol>
+          <li>Gere os arquivos de produção para Web:
+            <pre><code>flutter build web --release</code></pre>
+          </li>
+          <li>Suba o projeto para o GitHub ou instale a CLI da Vercel:
+            <pre><code>npm install -g vercel</code></pre>
+          </li>
+          <li>No painel da Vercel (<a href="https://vercel.com" target="_blank">vercel.com</a>):
+            <ul>
+              <li>Clique em <strong>Add New &rarr; Project</strong> e importe seu repositório do GitHub.</li>
+              <li>Em <strong>Build and Output Settings</strong>:
+                <ul>
+                  <li><strong>Output Directory:</strong> defina como <code>build/web</code></li>
+                  <li><strong>Build Command:</strong> deixe em branco (se você já fez o build local) ou use um script com o Flutter SDK configurado.</li>
+                </ul>
+              </li>
+              <li>Clique em <strong>Deploy</strong>.</li>
+            </ul>
+          </li>
+          <li>Pronto! Você receberá um link HTTPS gratuito (ex: <code>carcare.vercel.app</code>) que abre perfeitamente em navegadores mobile (Android, iOS Safari, Chrome, Edge) com sincronização em nuvem pelo Firebase.</li>
+        </ol>
+      </section>
+
+      <!-- 8. Estrutura de Pastas -->
       <section id="estrutura-pastas">
-        <h2>7. Estrutura de Pastas</h2>
-        <p>A arquitetura segue o padrão modular recomendado pelas boas práticas da comunidade Flutter:</p>
+        <h2>8. Estrutura de Pastas</h2>
+        <p>A arquitetura modular segue as boas práticas da comunidade Flutter:</p>
         <pre><code>carcare/
 ├── assets/
 │   └── images/               # Logo e identidade visual do app
 ├── lib/
-│   ├── main.dart             # Inicialização, tema, internacionalização pt_BR
-│   ├── app.dart              # Configuração do MaterialApp, temas e AuthGate
+│   ├── main.dart             # Inicialização, tema e localização pt_BR
+│   ├── app.dart              # MaterialApp e AuthGate
 │   ├── firebase_options.dart # Credenciais geradas pelo FlutterFire CLI
-│   ├── models/               # Estruturas de dados (Vehicle, Maintenance, Fuel, Fipe)
-│   ├── repositories/         # Operações CRUD no Cloud Firestore
-│   ├── screens/              # Telas (AuthGate, Login, Cadastro, Home)
-│   ├── services/             # Firebase Auth e serviço HTTP da FIPE
-│   ├── theme/                # Paleta de cores oficial e temas claro/escuro
-│   ├── utils/                # Catálogo de manutenções, formatadores e cálculos
-│   └── widgets/              # Componentes reutilizáveis (cards, botões, campos)
-├── manual/                   # Manual técnico HTML/CSS entregue com o projeto
+│   ├── models/               # Classes de dados (Vehicle, Maintenance, FuelRecord, Fipe)
+│   ├── repositories/         # Operações CRUD no Cloud Firestore (veículos, gastos, etc.)
+│   ├── screens/
+│   │   ├── auth/             # Login, cadastro e AuthGate
+│   │   ├── home/             # Tela principal e abas (Início, Veículos, Manutenções, Abastecimentos)
+│   │   ├── manual/           # Central de Dúvidas Frequentes (FAQ)
+│   │   ├── reports/          # Gráficos em colunas (Semana, Mês, Ano) e consumo
+│   │   └── vehicle/          # Diário de Bordo / Log unificado do veículo
+│   ├── services/             # Autenticação Firebase e API FIPE
+│   ├── theme/                # Paleta oficial (Pólen de Ouro, Obsidian, Branco Gelo)
+│   ├── utils/                # Cálculos, alertas de rodízio, catálogo de manutenções
+│   └── widgets/              # Termômetro de consumo, cards, botões, campos e logo
+├── manual/                   # Manual técnico HTML/CSS completo
 ├── test/                     # Testes automatizados (widget_test.dart)
-├── firestore.rules           # Regras de segurança do Firestore
+├── firestore.rules           # Regras de segurança em nuvem do Firestore
+├── run.bat / run.ps1         # Scripts de inicialização rápida sem travas no Windows
 └── pubspec.yaml              # Dependências e metadados do projeto</code></pre>
       </section>
 
-      <!-- 8. Estrutura do Banco de Dados -->
+      <!-- 9. Estrutura do Banco de Dados -->
       <section id="banco-de-dados">
-        <h2>8. Estrutura do Banco de Dados (Cloud Firestore)</h2>
-        <p>Cada usuário autenticado possui sua própria árvore de dados privada, garantindo total isolamento e segurança:</p>
+        <h2>9. Estrutura do Banco de Dados (Cloud Firestore)</h2>
+        <p>Cada motorista possui sua árvore privada e criptografada em nuvem, garantindo isolamento total:</p>
         <table>
           <thead>
             <tr>
-              <th>Caminho da Coleção</th>
+              <th>Coleção</th>
               <th>Campos Principais</th>
-              <th>Finalidade</th>
+              <th>Descrição</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td><code>users/{uid}</code></td>
               <td><code>name, email, createdAt</code></td>
-              <td>Perfil e dados do motorista autenticado.</td>
+              <td>Dados cadastrais do motorista autenticado.</td>
             </tr>
             <tr>
               <td><code>users/{uid}/vehicles/{id}</code></td>
               <td><code>type ('carro'|'moto'), brand, model, year, plate, currentKm, transmission, fipeCode, fipeValue, fipeReference, createdAt</code></td>
-              <td>Veículos cadastrados pelo usuário.</td>
+              <td>Carros e motocicletas do usuário.</td>
             </tr>
             <tr>
               <td><code>users/{uid}/maintenances/{id}</code></td>
               <td><code>vehicleId, category, date, km, cost, notes, nextKm, nextDate, createdAt</code></td>
-              <td>Histórico de manutenções e projeção de serviços futuros.</td>
+              <td>Registros de manutenção com projeção futura de revisão.</td>
             </tr>
             <tr>
               <td><code>users/{uid}/fuel/{id}</code></td>
-              <td><code>vehicleId, date, km, liters, totalPrice, createdAt</code></td>
-              <td>Abastecimentos para cálculo de consumo e custo por litro.</td>
+              <td><code>vehicleId, fuelType ('Gasolina'|'Etanol'|'Diesel'|'GNV'), date, km, liters, totalPrice, createdAt</code></td>
+              <td>Abastecimentos com suporte a volume em Litros ou m³ (GNV).</td>
             </tr>
           </tbody>
         </table>
       </section>
 
-      <!-- 9. Regras de Segurança -->
+      <!-- 10. Regras de Segurança -->
       <section id="regras-seguranca">
-        <h2>9. Regras de Segurança (firestore.rules)</h2>
-        <p>O arquivo <code>firestore.rules</code> implementa validação estrita:</p>
-        <ul>
-          <li><strong>Isolamento Total:</strong> apenas <code>request.auth.uid == {uid}</code> tem permissão de leitura e escrita. Nenhuma informação é visível para outros usuários.</li>
-          <li><strong>Validação de Schema:</strong> proíbe campos inesperados (<code>hasOnly</code>) e checa tipos de dados (números não negativos, limites de texto).</li>
-          <li><strong>Imutabilidade de Auditoria:</strong> o campo <code>createdAt</code> não pode ser modificado após a criação.</li>
-        </ul>
+        <h2>10. Regras de Segurança (firestore.rules)</h2>
+        <p>As regras protegem as subcoleções exigindo autenticação do proprietário:</p>
+        <pre><code>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /{allSubcollections=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}</code></pre>
       </section>
 
-      <!-- 10. Login e Cadastro -->
+      <!-- 11. Login e Cadastro -->
       <section id="telas-autenticacao">
-        <h2>10. Explicação do Login e Cadastro</h2>
-        <p>A navegação inicial é governada pelo <code>AuthGate</code> (StreamBuilder ouvindo <code>authStateChanges</code>):</p>
+        <h2>11. Explicação do Login e Cadastro</h2>
         <ul>
-          <li><strong>Login:</strong> valida campos de e-mail e senha com feedback imediato. Se as credenciais estiverem incorretas, exibe card de erro estilizado em português (ex: "E-mail ou senha incorretos"). Inclui recuperação de senha via e-mail.</li>
-          <li><strong>Cadastro:</strong> solicita Nome, E-mail, Senha e Confirmação de senha. Garante consistência de senha igual e salva o perfil no Firestore e Firebase Auth simultaneamente.</li>
+          <li><strong>AuthGate:</strong> escuta ativamente o estado de autenticação via stream. Usuários deslogados são direcionados ao Login; usuários autenticados vão direto para a tela principal.</li>
+          <li><strong>Login:</strong> valida campos de e-mail e senha com feedback visual em português e suporte à recuperação de senha por e-mail.</li>
+          <li><strong>Cadastro:</strong> cria a credencial no Firebase Authentication e grava simultaneamente o documento do motorista em <code>users/{uid}</code>.</li>
         </ul>
       </section>
 
-      <!-- 11. Tela Principal -->
+      <!-- 12. Tela Principal & 5 Abas -->
       <section id="tela-principal">
-        <h2>11. Tela Principal (Home)</h2>
-        <p>A tela inicial dispõe de barra de navegação responsiva em 4 abas:</p>
+        <h2>12. Tela Principal (Home) e as 5 Abas</h2>
+        <p>O aplicativo organiza toda a experiência em 5 abas integradas:</p>
         <ol>
-          <li><strong>Início (Visão Geral):</strong> exibe saudação ao motorista, cards de resumo (total de veículos, gastos do mês, consumo médio geral, quantidade de alertas pendentes) e os alertas mais urgentes.</li>
-          <li><strong>Veículos:</strong> listagem dos carros e motos com quilometragem, placa, valor FIPE e badge de manutenções pendentes.</li>
-          <li><strong>Manutenções:</strong> histórico completo com filtro por veículo, custos e indicação visual de serviços.</li>
-          <li><strong>Abastecimentos:</strong> histórico com volume abastecido, preço pago e cálculo de preço por litro.</li>
+          <li><strong>Início (Visão Geral):</strong> cartões de resumo (veículos, gastos no mês, alertas de serviços ativos, consumo médio geral), termômetro visual e <strong>banner de alerta se hoje for dia de rodízio</strong> de algum carro.</li>
+          <li><strong>Veículos:</strong> listagem completa com odômetro, placa, valor FIPE, chip de rodízio e botão para acessar o Diário de Bordo.</li>
+          <li><strong>Manutenções:</strong> histórico de revisões com filtro por veículo, badge de status e botão para <strong>Editar</strong> ou Excluir.</li>
+          <li><strong>Abastecimentos:</strong> histórico com tipo de combustível, preço pago, volume abastecido (L ou m³) e botão para <strong>Editar</strong> ou Excluir.</li>
+          <li><strong>Relatórios:</strong> gráficos de colunas interativos por Semana, Mês ou Ano, detalhamento clicável de custos e tabela de consumo por veículo.</li>
         </ol>
       </section>
 
-      <!-- 12. CRUD de Veículos -->
+      <!-- 13. Veículos, FIPE & Rodízio -->
       <section id="crud-veiculos">
-        <h2>12. Como Cadastrar, Editar e Excluir Informações (CRUD)</h2>
-        <h3>Veículos</h3>
+        <h2>13. Gestão de Veículos, Tabela FIPE &amp; Rodízio Municipal</h2>
+        <h3>Alerta Automático de Rodízio por Placa</h3>
+        <p>O utilitário <code>RodizioHelper</code> lê o último dígito numérico da placa (funciona tanto no padrão tradicional <code>ABC-1234</code> quanto no Mercosul <code>ABC1D23</code>):</p>
         <ul>
-          <li><strong>Criar:</strong> toque no botão <code>+ Novo Veículo</code> na aba Veículos. Escolha entre Carro ou Moto, informe marca, modelo, ano, quilometragem inicial e placa. Para carros, selecione o tipo de câmbio (Manual ou Automático).</li>
-          <li><strong>Consultar:</strong> toque no card do veículo para abrir a folha com todos os detalhes e acessar a consulta FIPE.</li>
-          <li><strong>Editar:</strong> na folha de detalhes, toque em <code>Editar</code> para atualizar qualquer campo.</li>
-          <li><strong>Atualizar KM Rápido:</strong> na folha de detalhes, toque em <code>Atualizar</code> ao lado do odômetro.</li>
-          <li><strong>Excluir:</strong> na folha de detalhes, toque em <code>Excluir</code>. O sistema realiza exclusão em cascata (remove o veículo e todas as manutenções e abastecimentos vinculados via <code>WriteBatch</code>).</li>
+          <li><strong>Finais 1 e 2:</strong> Segunda-feira</li>
+          <li><strong>Finais 3 e 4:</strong> Terça-feira</li>
+          <li><strong>Finais 5 e 6:</strong> Quarta-feira</li>
+          <li><strong>Finais 7 e 8:</strong> Quinta-feira</li>
+          <li><strong>Finais 9 e 0:</strong> Sexta-feira</li>
+          <li><strong>Motocicletas:</strong> Isentas de rodízio municipal.</li>
+        </ul>
+        <p>Ao cadastrar ou editar o veículo, o app mostra o dia do rodízio em tempo real enquanto a placa é digitada. Se hoje for o dia do rodízio, um banner amarelo de aviso fica ativo na tela inicial.</p>
+      </section>
+
+      <!-- 14. Manutenções & Edição -->
+      <section id="crud-manutencoes">
+        <h2>14. Manutenções, Alertas Futuros e Edição</h2>
+        <p>Ao tocar em qualquer manutenção registrada, o usuário pode clicar no botão <strong>"Editar"</strong> para retificar custos, data, quilometragem ou observações caso tenha confirmado com algum erro.</p>
+        <p>O aplicativo projeta a próxima revisão por quilometragem ou data limite. Quando a quilometragem do veículo se aproxima (menos de 500 km) ou a data vence, badges amarelas ou vermelhas de alerta são acionadas.</p>
+      </section>
+
+      <!-- 15. Abastecimento, GNV & Odômetro -->
+      <section id="crud-abastecimentos">
+        <h2>15. Abastecimento, Múltiplos Combustíveis &amp; Odômetro Automático</h2>
+        <ul>
+          <li><strong>Múltiplos Combustíveis:</strong> suporte nativo para <em>Gasolina, Etanol, Diesel e GNV (Gás Natural Veicular)</em>. Ao selecionar GNV, o aplicativo converte as unidades para Metros Cúbicos (m³) e km/m³.</li>
+          <li><strong>Atualização Automática de Odômetro:</strong> ao lançar um abastecimento informando a quilometragem atual, o aplicativo calcula na hora o consumo do trecho percorrido e <strong>atualiza automaticamente o odômetro do veículo no banco de dados</strong> ao salvar.</li>
+          <li><strong>Edição de Abastecimento:</strong> toque sobre qualquer abastecimento na lista para abrir os detalhes e selecionar <strong>"Editar"</strong> para corrigir valores ou volumes.</li>
         </ul>
       </section>
 
-      <!-- 13. Manutenções & Alertas -->
-      <section id="crud-manutencoes">
-        <h2>13. Manutenções, Catálogo e Alertas Futuros</h2>
-        <p>O aplicativo adapta o catálogo de serviços conforme o tipo de veículo:</p>
-        <div class="grid-cards">
-          <div class="card">
-            <h4>Catálogo para Moto</h4>
-            <p>Óleo do motor e filtro, freios, pneus/rodas, kit de transmissão, sistema elétrico, velas/filtro de ar, revisões periódicas, óleo das bengalas, caixa de direção, balança traseira, arrefecimento, radiador, cabos de aço, manetes/pedal, filtro de combustível e TBI.</p>
-          </div>
-          <div class="card">
-            <h4>Catálogo para Carro</h4>
-            <p>Troca de óleo e filtro, revisão geral, pneus, filtros de ar e combustível, freios, alinhamento/balanceamento, fluidos, sistema elétrico, suspensão/escape, correia dentada, velas/cabos, transmissão, embreagem (apenas para carros manuais) e palhetas.</p>
-          </div>
-        </div>
-        <p>Ao registrar um serviço, o app calcula a projeção do próximo serviço (por quilometragem e por data). Se o veículo atingir o limite ou estiver a menos de 500 km / 15 dias, o status passa para <strong>Em breve</strong> ou <strong>Atrasado</strong> com badges vermelhas na tela inicial.</p>
+      <!-- 16. Termômetro de Consumo -->
+      <section id="termometro-consumo">
+        <h2>16. Termômetro Visual de Eficiência de Consumo</h2>
+        <p>O widget <code>ConsumptionThermometer</code> classifica visualmente o consumo médio do veículo através de uma barra de 3 estágios com indicador dinâmico:</p>
+        <ul>
+          <li><strong style="color: #10b981;">Verde (Muito Econômico):</strong> Alta autonomia por litro/m³.</li>
+          <li><strong style="color: #f59e0b;">Amarelo (Normal / Moderado):</strong> Consumo padrão esperado para a categoria.</li>
+          <li><strong style="color: #ef4444;">Vermelho (Alto Consumo):</strong> Gasto elevado de combustível. Alerta o motorista para checar calibragem dos pneus, alinhamento, filtros e velas.</li>
+        </ul>
       </section>
 
-      <!-- 14. Abastecimento & Consumo -->
-      <section id="crud-abastecimentos">
-        <h2>14. Abastecimento e Consumo Médio</h2>
-        <p>Ao registrar abastecimentos com a quilometragem atual e a quantidade de litros, o CarCare calcula o <strong>consumo médio em km/l</strong> considerando a distância percorrida entre abastecimentos consecutivos dividida pelos litros consumidos.</p>
+      <!-- 17. Gráficos de Colunas & Relatórios -->
+      <section id="graficos-relatorios">
+        <h2>17. Gráficos de Colunas e Relatórios Financeiros</h2>
+        <p>Localizado na aba <strong>Relatórios</strong>:</p>
+        <ul>
+          <li><strong>Gráficos por Período:</strong> escolha visualizar gastos por <em>Semana</em> (dias de Seg a Dom), <em>Mês</em> (4 semanas do mês atual) ou <em>Ano</em> (12 meses).</li>
+          <li><strong>Colunas Coloridas:</strong> divisão proporcional e empilhada entre gastos de <strong>Combustível (Dourado)</strong> e <strong>Manutenções (Azul)</strong>.</li>
+          <li><strong>Interativo (Drill-Down):</strong> tocar em qualquer coluna abre o detalhamento exato com a lista de tudo o que foi gasto naquele período específico.</li>
+          <li><strong>Tabela de Consumo:</strong> resumo da frota com litros abastecidos, consumo em km/l e avaliação do termômetro.</li>
+        </ul>
       </section>
 
-      <!-- 15. Como Alterar Cores -->
+      <!-- 18. Diário de Bordo -->
+      <section id="diario-de-bordo">
+        <h2>18. Diário de Bordo (Log Unificado do Veículo)</h2>
+        <p>A tela <code>VehicleLogScreen</code> consolida a linha do tempo completa do carro ou moto. Ela reúne em ordem cronológica reversa todas as manutenções executadas, abastecimentos, evolução do odômetro e gastos acumulados com filtros rápidos (*Tudo*, *Serviços* e *Abastecimentos*).</p>
+      </section>
+
+      <!-- 19. Central de Dúvidas (FAQ) -->
+      <section id="central-faq">
+        <h2>19. Central de Dúvidas Frequentes (FAQ)</h2>
+        <p>Acessível pelo botão flutuante amarelo com interrogação <code>?</code> no canto inferior esquerdo da tela inicial. Traz respostas rápidas para dúvidas comuns dos usuários organizadas com busca instantânea e tags de categorias.</p>
+      </section>
+
+      <!-- 20. Como Alterar Cores -->
       <section id="alterar-cores">
-        <h2>15. Como Alterar Cores (Identidade Visual)</h2>
+        <h2>20. Como Alterar Cores (Identidade Visual)</h2>
         <div class="palette-container">
           <div class="swatch">
             <div class="swatch-color" style="background-color: #E8B004;"></div>
             <div class="swatch-info">
               <strong>Amarelo Pólen de Ouro</strong>
-              <code>#E8B004</code> (Destaques e Ações)
+              <code>#E8B004</code> (Ações e Destaques)
             </div>
           </div>
           <div class="swatch">
@@ -311,103 +391,71 @@ cd carcare</code></pre>
             </div>
           </div>
         </div>
-        <p>Todas as cores da aplicação estão centralizadas em um único arquivo: <code>lib/theme/app_colors.dart</code>:</p>
-        <pre><code>// lib/theme/app_colors.dart
-class AppColors {
-  static const Color goldenPollen = Color(0xFFE8B004); // Mude aqui para alterar a cor primária
-  static const Color iceWhite     = Color(0xFFF7F7F2); // Mude aqui para alterar o fundo claro
-  static const Color obsidian     = Color(0xFF121214); // Mude aqui para alterar o tema escuro
-}</code></pre>
-        <p>Qualquer modificação refletirá automaticamente em botões, abas, ícones e temas.</p>
+        <p>As cores principais estão centralizadas em <code>lib/theme/app_colors.dart</code>.</p>
       </section>
 
-      <!-- 16. Como Trocar o Logo -->
+      <!-- 21. Como Trocar o Logo -->
       <section id="trocar-logo">
-        <h2>16. Como Trocar o Logo</h2>
+        <h2>21. Como Trocar o Logo</h2>
         <ol>
-          <li>Gere uma nova imagem quadrada (PNG, recomendado 1024x1024 px).</li>
-          <li>Substitua o arquivo em <code>assets/images/logo.png</code>.</li>
-          <li>Copie também para <code>manual/imagens/logo.png</code> para atualizar o manual.</li>
-          <li>Para recriar os ícones do aplicativo para Android, iOS, Web e Windows, execute no terminal:
-            <pre><code>flutter pub run flutter_launcher_icons</code></pre>
+          <li>Gere uma nova imagem quadrada (PNG 1024x1024 px).</li>
+          <li>Substitua em <code>assets/images/logo.png</code> e <code>manual/imagens/logo.png</code>.</li>
+          <li>Execute no terminal para recriar os ícones de todas as plataformas:
+            <pre><code>dart run flutter_launcher_icons</code></pre>
           </li>
         </ol>
       </section>
 
-      <!-- 17. Como Alterar o Nome do Aplicativo -->
+      <!-- 22. Como Alterar o Nome -->
       <section id="alterar-nome">
-        <h2>17. Como Alterar o Nome do Aplicativo</h2>
+        <h2>22. Como Alterar o Nome do Aplicativo</h2>
         <ol>
-          <li><strong>No código Flutter:</strong> abra <code>lib/utils/constants.dart</code> e altere a constante:
-            <pre><code>const String appName = 'NovoNome';</code></pre>
-          </li>
-          <li><strong>No Android:</strong> em <code>android/app/src/main/AndroidManifest.xml</code>, altere:
-            <pre><code>android:label="NovoNome"</code></pre>
-          </li>
-          <li><strong>Na Web:</strong> em <code>web/index.html</code>, altere a tag <code>&lt;title&gt;</code> e a meta tag <code>apple-mobile-web-app-title</code>.</li>
+          <li><strong>No Flutter:</strong> altere <code>appName</code> em <code>lib/utils/constants.dart</code>.</li>
+          <li><strong>No Android:</strong> altere <code>android:label</code> em <code>android/app/src/main/AndroidManifest.xml</code>.</li>
+          <li><strong>Na Web:</strong> altere a tag <code>&lt;title&gt;</code> em <code>web/index.html</code>.</li>
         </ol>
       </section>
 
-      <!-- 18. Como Adicionar Nova Tela -->
+      <!-- 23. Como Adicionar Nova Tela -->
       <section id="adicionar-tela">
-        <h2>18. Como Adicionar ou Alterar uma Tela</h2>
-        <ol>
-          <li>Crie o arquivo em <code>lib/screens/nome_da_tela_screen.dart</code> estendendo <code>StatelessWidget</code> ou <code>StatefulWidget</code>.</li>
-          <li>Use <code>Scaffold</code> com <code>AppBar</code> e envolva o corpo em <code>ResponsiveCenter</code> ou <code>pagePadding(context)</code> para manter o padrão responsivo.</li>
-          <li>Para navegar para ela a partir de qualquer botão, utilize o Navigator padrão do Flutter:
-            <pre><code>Navigator.push(
+        <h2>23. Como Adicionar ou Alterar uma Tela</h2>
+        <p>Crie o arquivo em <code>lib/screens/nome_da_tela_screen.dart</code> e navegue utilizando:</p>
+        <pre><code>Navigator.push(
   context,
   MaterialPageRoute(builder: (context) => const MinhaNovaTelaScreen()),
 );</code></pre>
-          </li>
-        </ol>
       </section>
 
-      <!-- 19. Alterar Campo no Banco de Dados -->
+      <!-- 24. Alterar Campo no Banco de Dados -->
       <section id="adicionar-campo">
-        <h2>19. Como Adicionar ou Alterar um Campo no Banco de Dados</h2>
-        <p>Por exemplo, para adicionar o campo <code>chassi</code> em Veículos:</p>
+        <h2>24. Como Adicionar ou Alterar um Campo no Banco de Dados</h2>
         <ol>
-          <li><strong>No Modelo (<code>lib/models/vehicle.dart</code>):</strong> adicione a propriedade final <code>final String chassi;</code>, inclua no construtor, no método <code>toMap()</code> e no construtor de fábrica <code>fromDoc()</code>.</li>
-          <li><strong>Nas Regras (<code>firestore.rules</code>):</strong> adicione o campo <code>'chassi'</code> na lista de chaves permitidas e a validação de tipo correspondente dentro de <code>isValidVehicle</code>. Publique as regras no Firebase Console.</li>
-          <li><strong>No Formulário (<code>lib/screens/home/home_screen.dart</code>):</strong> adicione o <code>TextEditingController</code> e o campo <code>AppTextField</code> correspondente dentro do <code>_VehicleFormSheetState</code>.</li>
+          <li>Adicione a propriedade no Model (<code>lib/models/...</code>), construtor, <code>toMap()</code> e <code>fromDoc()</code>.</li>
+          <li>Adicione o campo correspondente no formulário da tela (<code>_FuelFormSheetState</code>, <code>_VehicleFormSheetState</code>, etc.).</li>
         </ol>
       </section>
 
-      <!-- 20. Como Gerar Nova Versão (Build) -->
+      <!-- 25. Como Gerar Nova Versão (Build) -->
       <section id="gerar-versao">
-        <h2>20. Como Gerar uma Nova Versão do Projeto (Build)</h2>
+        <h2>25. Como Gerar uma Nova Versão do Projeto (Build)</h2>
         <ol>
-          <li>Abra o <code>pubspec.yaml</code> e incremente a versão:
-            <pre><code>version: 1.0.1+2   # (versão visível + número do build)</code></pre>
-          </li>
-          <li>Para gerar o pacote de produção para <strong>Web</strong>:
-            <pre><code>flutter build web --release</code></pre>
-          </li>
-          <li>Para gerar o instalador do <strong>Android (APK)</strong>:
-            <pre><code>flutter build apk --release</code></pre>
-            O arquivo final estará localizado em: <code>build/app/outputs/flutter-apk/app-release.apk</code>.
-          </li>
-          <li>Para gerar o instalador para <strong>Windows Desktop</strong>:
-            <pre><code>flutter build windows --release</code></pre>
-          </li>
+          <li>Incremente o número da versão em <code>pubspec.yaml</code> (ex: <code>version: 1.0.1+2</code>).</li>
+          <li>Para Web: <code>flutter build web --release</code></li>
+          <li>Para Android APK: <code>flutter build apk --release</code></li>
+          <li>Para Windows Desktop: <code>flutter build windows --release</code></li>
         </ol>
       </section>
 
-      <!-- 21. Solução de Problemas Comuns -->
+      <!-- 26. Solução de Problemas Comuns -->
       <section id="solucao-problemas">
-        <h2>21. Solução de Problemas Comuns (Troubleshooting)</h2>
+        <h2>26. Solução de Problemas Comuns (Troubleshooting)</h2>
         <div class="callout warning">
-          <strong>Erro: "permission-denied" no Firestore</strong>
-          <p>Ocorre quando as regras de segurança ainda não foram publicadas no Firebase Console. Acesse o Console &rarr; Firestore Database &rarr; Regras, cole o conteúdo de <code>firestore.rules</code> e clique em <strong>Publicar</strong>.</p>
+          <strong>Bloqueio de pasta no Windows / OneDrive ("Flutter failed to delete a directory at build\flutter_assets")</strong>
+          <p>Ocorre quando um processo anterior do Dart fica preso ou o OneDrive segura a pasta aberta. Basta executar o script <code>.\run</code> na raiz do projeto ou rodar no PowerShell: <code>Stop-Process -Name dart -Force; cmd /c "rmdir /s /q build"</code>.</p>
         </div>
         <div class="callout info">
           <strong>Aviso: "flutterfire não é reconhecido"</strong>
-          <p>Adicione o diretório global do Pub ao PATH do Windows: <code>%LOCALAPPDATA%\Pub\Cache\bin</code> e reabra o terminal.</p>
-        </div>
-        <div class="callout info">
-          <strong>Caminhos com espaço no Windows ("Área de Trabalho")</strong>
-          <p>No Android, caso o Gradle acuse incompatibilidade com caracteres acentuados no diretório do projeto, adicione <code>android.overridePathCheck=true</code> no arquivo <code>android/gradle.properties</code>.</p>
+          <p>Adicione <code>%LOCALAPPDATA%\Pub\Cache\bin</code> à variável PATH do sistema Windows.</p>
         </div>
       </section>
 
@@ -415,7 +463,7 @@ class AppColors {
   </div>
 
   <footer>
-    <p><strong>CarCare</strong> — Sistema de Controle de Manutenção Veicular • Projeto Prático AV1</p>
+    <p><strong>CarCare</strong> — Sistema de Controle de Manutenção Veicular</p>
     <p>Construído com Flutter, Dart e Google Firebase.</p>
   </footer>
 

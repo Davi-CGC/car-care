@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
-import '../../widgets/app_logo.dart';
 import '../../widgets/layout.dart';
 
 /// Modelo de item do FAQ.
@@ -143,14 +142,6 @@ class _ManualScreenState extends State<ManualScreen> {
       answer:
           'Sim! Todos os seus veículos, manutenções e abastecimentos são salvos na nuvem pelo Cloud Firestore. '
           'Basta fazer login com o mesmo e-mail e senha em qualquer celular ou navegador para acessar tudo.',
-    ),
-    _FaqItem(
-      category: 'Conta & Nuvem',
-      icon: Icons.code,
-      question: 'Onde encontro o Manual Técnico para desenvolvedores?',
-      answer:
-          'O manual técnico com arquitetura, regras de segurança, DER do banco de dados e requisitos '
-          'acadêmicos (HTML/CSS) fica disponível na pasta "manual/index.html" e no README do repositório no GitHub.',
     ),
   ];
 
@@ -327,28 +318,6 @@ class _ManualScreenState extends State<ManualScreen> {
                   ),
                 );
               }),
-
-            const SizedBox(height: 24),
-            // Rodapé com info sobre documentação técnica
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const AppLogo(size: 28),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Documentação técnica para avaliação acadêmica: consulte os arquivos manual/index.html e README.md no repositório.',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

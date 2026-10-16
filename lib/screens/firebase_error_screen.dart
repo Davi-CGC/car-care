@@ -29,7 +29,7 @@ class FirebaseErrorScreen extends StatelessWidget {
                   '2. flutterfire configure\n'
                   '3. Ative "E-mail/senha" no Authentication\n'
                   '4. Crie o Cloud Firestore e publique o firestore.rules\n\n'
-                  'Veja o passo a passo completo em manual/index.html.',
+                  'Consulte as instruções de configuração do Firebase.',
                 ),
                 const SizedBox(height: 16),
                 Text(error, style: Theme.of(context).textTheme.bodySmall),
