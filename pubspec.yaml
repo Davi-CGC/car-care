@@ -1,0 +1,50 @@
+name: carcare
+description: "CarCare - controle de manutenção de veículos (carros e motos)."
+publish_to: 'none'
+
+# Versão do app: <versão visível>+<número do build>.
+# Aumente os dois números a cada nova versão publicada.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  firebase_core: ^4.15.0          # Inicialização do Firebase
+  firebase_auth: ^6.7.0           # Login e cadastro
+  cloud_firestore: ^6.10.0        # Banco de dados
+  http: ^1.6.0                    # Consulta à Tabela FIPE
+  intl: ^0.20.3                   # Formatação de datas e moeda (pt_BR)
+  shared_preferences: ^2.5.6      # Salva a preferência de tema
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4 # Gera o ícone do app a partir do logo
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
+# Ícone do aplicativo. Depois de trocar o logo, rode:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/images/logo.png"
+    background_color: "#121214"
+    theme_color: "#E8B004"
+  windows:
+    generate: true
+    image_path: "assets/images/logo.png"

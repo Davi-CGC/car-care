@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "265421006481",
+    "firebase_url": "https://car-care-5c6cf-default-rtdb.firebaseio.com",
+    "project_id": "car-care-5c6cf",
+    "storage_bucket": "car-care-5c6cf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:265421006481:android:b21680cb6d1ef7dfad0130",
+        "android_client_info": {
+          "package_name": "br.com.carcare.carcare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaVo3-bhucjQJuFQT27aYUiB0MFdECYpU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
