@@ -1,4 +1,4 @@
-# 🚗 CarCare — Controle de Manutenção Veicular
+#  CarCare — Controle de Manutenção Veicular
 
 <p align="center">
   <img src="assets/images/logo.png" width="140" alt="CarCare Logo" style="border-radius: 24px;"/>
@@ -19,7 +19,7 @@
 
 ---
 
-## 📌 1. Descrição do Projeto
+##  1. Descrição do Projeto
 
 O **CarCare** foi desenvolvido como produto de software individual no modelo prático da disciplina (AV1). Trata-se de uma aplicação pensada para simplificar a vida de motoristas e motociclistas, eliminando surpresas desagradáveis causadas por falta de manutenção preventiva, descontrole de despesas com peças/serviços e falta de monitoramento do consumo de combustível.
 
@@ -27,7 +27,7 @@ O projeto possui identidade visual própria desenvolvida nos temas **Claro (Bran
 
 ---
 
-## 🎯 2. Objetivo
+##  2. Objetivo
 
 - **Prevenção:** alertar o condutor quando prazos ou limites de quilometragem de itens vitais (óleo, freios, pneus, correias, transmissão) estiverem próximos ou vencidos.
 - **Gestão Financeira:** registrar e somar todos os gastos com manutenções e combustível mensalmente.
@@ -38,39 +38,39 @@ O projeto possui identidade visual própria desenvolvida nos temas **Claro (Bran
 
 ## ⚡ 3. Principais Funcionalidades
 
-### 🔐 Autenticação de Usuários
+###  Autenticação de Usuários
 - Login com validação reativa e mensagens amigáveis em português.
 - Cadastro completo de novos usuários (Nome, E-mail, Senha e Confirmação de senha).
 - Recuperação de senha por e-mail via Firebase Authentication.
 - Persistência de sessão automática (`AuthGate`).
 
-### 🚘 Gestão de Veículos (CRUD Completo)
+###  Gestão de Veículos (CRUD Completo)
 - Cadastro de carros e motocicletas com marca, modelo, ano, placa e quilometragem.
 - Seleção de tipo de câmbio (Manual ou Automático) para carros.
 - Atualização rápida de quilometragem diretamente no odômetro.
 - Consulta e sincronização com a **Tabela FIPE** (marca, modelo, ano e valor venal).
 - Exclusão com limpeza em cascata (remove manutenções e abastecimentos associados com `WriteBatch`).
 
-### 🛠️ Histórico e Catálogo Inteligente de Manutenções (CRUD)
+### ️ Histórico e Catálogo Inteligente de Manutenções (CRUD)
 - **Catálogo Especializado para Motocicletas:**
   - Óleo do motor e filtro, Sistema de freios, Pneus e rodas, Kit de transmissão, Sistema elétrico e bateria, Filtro de ar e velas de ignição, Revisões periódicas, Óleo das bengalas, Caixa de direção, Balança traseira, Líquido de arrefecimento, Radiador e mangueiras, Cabos de aço, Manetes e pedal de câmbio, Filtro de combustível, Limpeza do corpo de borboleta (TBI).
 - **Catálogo Especializado para Carros:**
   - Tabela FIPE do veículo, Consumo médio de combustível, Troca de óleo por KM e por tempo, Revisão geral, Troca de pneus, Filtros de ar e combustível, Sistema de freios, Alinhamento e balanceamento, Fluidos e arrefecimento, Sistema elétrico, Suspensão e escapamento, Correia dentada e tensores, Velas e cabos de ignição, Sistema de transmissão, Embreagem (filtrada automaticamente apenas para carros manuais), Palhetas do limpador.
 - **Alertas Preditivos:** cálculo automático do próximo serviço por KM ou data, categorizando em *Em dia*, *Em breve* ou *Atrasado*.
 
-### ⛽ Controle de Abastecimento & Consumo Médio (CRUD)
+###  Controle de Abastecimento & Consumo Médio (CRUD)
 - Registro de data, quilometragem, litros e valor total pago.
 - Cálculo automático do preço pago por litro.
 - Cálculo estatístico do consumo médio da frota (km/l).
 
-### 🌓 Identidade Visual & Usabilidade
+###  Identidade Visual & Usabilidade
 - Seletor de tema claro / escuro com persistência via `SharedPreferences`.
 - Layout responsivo adaptado para celulares, tablets e navegadores web.
 - Ícones personalizados gerados para Android, iOS, Web e Windows.
 
 ---
 
-## 🛠️ 4. Tecnologias Utilizadas
+##  4. Tecnologias Utilizadas
 
 - **Linguagem:** [Dart](https://dart.dev/)
 - **Framework:** [Flutter](https://flutter.dev/) (Material 3)
@@ -83,7 +83,7 @@ O projeto possui identidade visual própria desenvolvida nos temas **Claro (Bran
 
 ---
 
-## 🚀 5. Como Instalar e Executar
+##  5. Como Instalar e Executar
 
 ### Pré-requisitos
 - Flutter SDK instalado e adicionado ao PATH (`flutter --version`).
@@ -117,7 +117,7 @@ O projeto possui identidade visual própria desenvolvida nos temas **Claro (Bran
 
 ---
 
-## 🗄️ 6. Informações sobre o Banco de Dados
+## ️ 6. Informações sobre o Banco de Dados
 
 O aplicativo utiliza o **Cloud Firestore** em modo isolado por usuário. O caminho raiz de dados de cada cliente autenticado é:
 
@@ -137,7 +137,7 @@ As regras garantem que nenhum usuário tenha acesso de leitura ou escrita aos da
 
 ---
 
-## 📖 7. Manual Técnico do Desenvolvedor
+##  7. Manual Técnico do Desenvolvedor
 
 O projeto acompanha um manual técnico completo desenvolvido em **HTML e CSS** para consulta de arquitetura, guias de manutenção e solução de problemas:
 
@@ -147,9 +147,9 @@ O projeto acompanha um manual técnico completo desenvolvido em **HTML e CSS** p
 
 ---
 
-## 👨‍💻 8. Identificação do Desenvolvedor
+##  8. Identificação do Desenvolvedor
 
-- **Aluno / Desenvolvedor:** Davi Calança
+- **Aluno / Desenvolvedor:** Davi Calanca
 - **Contato:** davicalanca168@gmail.com
 - **Projeto:** AV1 — Desenvolvimento de Aplicações Móveis com Flutter e Dart
-- **Ano / Semestre:** 2026
+- **2° info B:** 2026

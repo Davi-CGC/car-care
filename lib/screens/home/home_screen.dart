@@ -27,7 +27,10 @@ import '../../widgets/loading_button.dart';
 import '../../widgets/record_tiles.dart';
 import '../../widgets/summary_card.dart';
 import '../../widgets/vehicle_card.dart';
+import '../../utils/rodizio_helper.dart';
 import '../manual/manual_screen.dart';
+import '../reports/reports_tab.dart';
+import '../vehicle/vehicle_log_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -115,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           _buildVehiclesTab(vehicles, alerts),
                           _buildMaintenancesTab(vehicles, maintenances),
                           _buildFuelTab(vehicles, fuels),
+                          ReportsTab(vehicles: vehicles, maintenances: maintenances, fuels: fuels),
                         ],
                       ),
                       Positioned(
@@ -124,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           heroTag: 'help_manual_fab',
                           backgroundColor: AppColors.goldenPollen,
                           foregroundColor: AppColors.obsidian,
-                          tooltip: 'Manual & Dúvidas',
+                          tooltip: 'Dúvidas Frequentes (FAQ)',
                           elevation: 4,
                           onPressed: () {
                             Navigator.push(
@@ -173,6 +177,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         icon: const Icon(Icons.local_gas_station_outlined),
                         selectedIcon: const Icon(Icons.local_gas_station),
                         label: 'Abastecimentos',
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.bar_chart_outlined),
+                        selectedIcon: const Icon(Icons.bar_chart),
+                        label: 'Relatórios',
                       ),
                     ],
                   ),
@@ -248,6 +257,35 @@ class _HomeScreenState extends State<HomeScreen> {
           appSlogan,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
         ),
+        if (vehicles.any((v) => v.isCar && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, isCar: true).isToday)) ...[
+          const SizedBox(height: 14),
+          ...vehicles
+              .where((v) => v.isCar && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, isCar: true).isToday)
+              .map((rv) {
+            final rInfo = RodizioHelper.getInfo(rv.plate, isCar: true);
+            return Card(
+              color: AppColors.warning.withValues(alpha: 0.15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: const BorderSide(color: AppColors.warning, width: 1.5),
+              ),
+              child: ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.warning,
+                  child: Icon(Icons.warning_amber_rounded, color: Colors.black87),
+                ),
+                title: Text(
+                  'Atenção ao Rodízio Hoje: ${rv.name} (${rv.plate.toUpperCase()})',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                subtitle: Text(
+                  'Restrição ativa hoje (${rInfo.dayName}) das ${rInfo.timeRange}.',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            );
+          }),
+        ],
         const SizedBox(height: 20),
         SummaryGrid(
           children: [
@@ -336,7 +374,11 @@ class _HomeScreenState extends State<HomeScreen> {
         else
           ...maintenances.take(3).map((m) {
             final v = vehicles.cast<Vehicle?>().firstWhere((v) => v?.id == m.vehicleId, orElse: () => null);
-            return MaintenanceTile(maintenance: m, vehicleName: v?.name);
+            return MaintenanceTile(
+              maintenance: m,
+              vehicleName: v?.name,
+              onTap: () => _showMaintenanceDetailsModal(context, vehicles, m, v),
+            );
           }),
         const SectionTitle('Últimos Abastecimentos'),
         if (fuels.isEmpty)
@@ -345,7 +387,10 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text('Nenhum abastecimento registrado ainda.'),
           )
         else
-          ...fuels.take(3).map((f) => FuelTile(record: f)),
+          ...fuels.take(3).map((f) => FuelTile(
+                record: f,
+                onTap: () => _showFuelDetailsModal(context, vehicles, f),
+              )),
       ],
     );
   }
@@ -424,7 +469,7 @@ class _HomeScreenState extends State<HomeScreen> {
             return MaintenanceTile(
               maintenance: m,
               vehicleName: v?.name,
-              onTap: () => _showMaintenanceDetailsModal(context, m, v),
+              onTap: () => _showMaintenanceDetailsModal(context, vehicles, m, v),
             );
           }),
       ],
@@ -497,7 +542,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           ...filtered.map((f) => FuelTile(
                 record: f,
-                onTap: () => _showFuelDetailsModal(context, f),
+                onTap: () => _showFuelDetailsModal(context, vehicles, f),
               )),
         ],
       ],
@@ -561,13 +606,34 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
               ),
-              if (vehicle.plate.isNotEmpty)
+              if (vehicle.plate.isNotEmpty) ...[
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.badge_outlined),
                   title: const Text('Placa'),
                   subtitle: Text(vehicle.plate.toUpperCase()),
                 ),
+                Builder(builder: (_) {
+                  final rodizio = RodizioHelper.getInfo(vehicle.plate, isCar: vehicle.isCar);
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.calendar_month,
+                      color: rodizio.isToday ? AppColors.warning : null,
+                    ),
+                    title: const Text('Rodízio Municipal'),
+                    subtitle: Text(
+                      vehicle.isCar
+                          ? '${rodizio.dayName} (${rodizio.timeRange})${rodizio.isToday ? ' • ATIVO HOJE!' : ''}'
+                          : 'Isento (Motocicleta)',
+                      style: TextStyle(
+                        color: rodizio.isToday ? AppColors.warning : null,
+                        fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  );
+                }),
+              ],
               if (vehicle.isCar && vehicle.transmission.isNotEmpty)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -592,7 +658,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.goldenPollen,
+                  foregroundColor: AppColors.obsidian,
+                ),
+                icon: const Icon(Icons.menu_book),
+                label: const Text('Diário de Bordo / Log do Veículo'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VehicleLogScreen(vehicle: vehicle),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -703,7 +787,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showMaintenanceDetailsModal(BuildContext context, Maintenance m, Vehicle? v) {
+  void _showMaintenanceDetailsModal(
+      BuildContext context, List<Vehicle> vehicles, Maintenance m, Vehicle? v) {
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => Padding(
@@ -728,6 +813,17 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 24),
             Row(
               children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Editar'),
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _showMaintenanceDialog(context, vehicles, m);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
@@ -772,7 +868,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showFuelDetailsModal(BuildContext context, FuelRecord f) {
+  void _showFuelDetailsModal(BuildContext context, List<Vehicle> vehicles, FuelRecord f) {
     showModalBottomSheet(
       context: context,
       builder: (sheetContext) => Padding(
@@ -790,24 +886,41 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Preço por ${f.unit}: ${formatMoney(f.pricePerLiter)}'),
             Text('Total Pago: ${formatMoney(f.totalPrice)}'),
             const SizedBox(height: 24),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
-              icon: const Icon(Icons.delete),
-              label: const Text('Excluir'),
-              onPressed: () async {
-                final confirm = await confirmDialog(
-                  sheetContext,
-                  title: 'Excluir Abastecimento',
-                  message: 'Deseja apagar este registro de abastecimento?',
-                );
-                if (confirm) {
-                  await _fuelRepo.delete(f.id);
-                  if (sheetContext.mounted) {
-                    Navigator.pop(sheetContext);
-                    showMessage(context, 'Abastecimento excluído.');
-                  }
-                }
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.edit),
+                    label: const Text('Editar'),
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _showFuelDialog(context, vehicles, f);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Excluir'),
+                    onPressed: () async {
+                      final confirm = await confirmDialog(
+                        sheetContext,
+                        title: 'Excluir Abastecimento',
+                        message: 'Deseja apagar este registro de abastecimento?',
+                      );
+                      if (confirm) {
+                        await _fuelRepo.delete(f.id);
+                        if (sheetContext.mounted) {
+                          Navigator.pop(sheetContext);
+                          showMessage(context, 'Abastecimento excluído.');
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -852,6 +965,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     _plate = TextEditingController(text: e?.plate ?? '');
     _km = TextEditingController(text: e != null ? '${e.currentKm}' : '0');
     _transmission = (e != null && e.transmission.isNotEmpty) ? e.transmission : 'Manual';
+    _plate.addListener(() => setState(() {}));
   }
 
   @override
@@ -973,6 +1087,50 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                 icon: Icons.badge_outlined,
                 textCapitalization: TextCapitalization.characters,
               ),
+              if (_plate.text.trim().isNotEmpty) ...[
+                Builder(builder: (_) {
+                  final rodizio = RodizioHelper.getInfo(_plate.text.trim(), isCar: _type == VehicleType.carro);
+                  if (_type == VehicleType.moto) {
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 6, left: 4),
+                      child: Text(
+                        '🏍️ Motocicletas são isentas do rodízio municipal.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    );
+                  }
+                  if (rodizio.lastDigit == null) {
+                    return const Padding(
+                      padding: EdgeInsets.only(top: 6, left: 4),
+                      child: Text(
+                        'Digite os números da placa para ver o dia do rodízio.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    );
+                  }
+                  return Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.goldenPollen.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_month, size: 18, color: AppColors.goldenPollen),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Dia de Rodízio: ${rodizio.dayName} (${rodizio.timeRange})',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
               if (_type == VehicleType.carro) ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(

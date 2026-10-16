@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/vehicle.dart';
 import '../theme/app_colors.dart';
 import '../utils/formatters.dart';
+import '../utils/rodizio_helper.dart';
 
 /// Card de veículo usado na lista de veículos.
 class VehicleCard extends StatelessWidget {
@@ -62,6 +63,40 @@ class VehicleCard extends StatelessWidget {
                     if (vehicle.fipeValue.isNotEmpty)
                       Text('FIPE: ${vehicle.fipeValue}',
                           style: theme.textTheme.bodySmall),
+                    if (vehicle.plate.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Builder(builder: (_) {
+                        final rodizio = RodizioHelper.getInfo(vehicle.plate, isCar: vehicle.isCar);
+                        if (!vehicle.isCar) {
+                          return const Text(
+                            'Isento de rodízio',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          );
+                        }
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: rodizio.isToday
+                                ? AppColors.warning.withValues(alpha: 0.2)
+                                : Colors.grey.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                            border: rodizio.isToday
+                                ? Border.all(color: AppColors.warning, width: 1)
+                                : null,
+                          ),
+                          child: Text(
+                            rodizio.isToday
+                                ? '⚠️ Rodízio Hoje (${rodizio.dayName})'
+                                : 'Rodízio: ${rodizio.dayName}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
+                              color: rodizio.isToday ? AppColors.warning : null,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
                   ],
                 ),
               ),
