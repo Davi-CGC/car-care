@@ -1,0 +1,1583 @@
+import 'package:flutter/material.dart';
+
+import '../../models/fipe.dart';
+import '../../models/fuel_record.dart';
+import '../../models/maintenance.dart';
+import '../../models/maintenance_alert.dart';
+import '../../models/vehicle.dart';
+import '../../repositories/fuel_repository.dart';
+import '../../repositories/maintenance_repository.dart';
+import '../../repositories/vehicle_repository.dart';
+import '../../services/auth_service.dart';
+import '../../services/fipe_service.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/theme_controller.dart';
+import '../../utils/calculations.dart';
+import '../../utils/constants.dart';
+import '../../utils/dialogs.dart';
+import '../../utils/formatters.dart';
+import '../../utils/maintenance_catalog.dart';
+import '../../utils/validators.dart';
+import '../../widgets/app_logo.dart';
+import '../../widgets/app_text_field.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/layout.dart';
+import '../../widgets/loading_button.dart';
+import '../../widgets/record_tiles.dart';
+import '../../widgets/summary_card.dart';
+import '../../widgets/vehicle_card.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  final _vehicleRepo = VehicleRepository();
+  final _maintenanceRepo = MaintenanceRepository();
+  final _fuelRepo = FuelRepository();
+  final _auth = AuthService();
+
+  String? _selectedVehicleFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final user = _auth.currentUser;
+
+    return StreamBuilder<List<Vehicle>>(
+      stream: _vehicleRepo.watchAll(),
+      builder: (context, vSnap) {
+        final vehicles = vSnap.data ?? [];
+
+        return StreamBuilder<List<Maintenance>>(
+          stream: _maintenanceRepo.watchAll(),
+          builder: (context, mSnap) {
+            final maintenances = mSnap.data ?? [];
+
+            return StreamBuilder<List<FuelRecord>>(
+              stream: _fuelRepo.watchAll(),
+              builder: (context, fSnap) {
+                final fuels = fSnap.data ?? [];
+                final alerts = Calculations.alerts(vehicles, maintenances);
+
+                return Scaffold(
+                  appBar: AppBar(
+                    title: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const AppLogo(size: 32),
+                        const SizedBox(width: 8),
+                        Text(
+                          appName,
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      IconButton(
+                        icon: Icon(
+                          themeController.isDark
+                              ? Icons.light_mode
+                              : Icons.dark_mode,
+                        ),
+                        tooltip: 'Alternar Tema',
+                        onPressed: () => setState(() => themeController.toggle()),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.logout),
+                        tooltip: 'Sair',
+                        onPressed: () async {
+                          final confirm = await confirmDialog(
+                            context,
+                            title: 'Sair da conta',
+                            message: 'Deseja realmente sair do aplicativo?',
+                            confirmText: 'Sair',
+                          );
+                          if (confirm) await _auth.signOut();
+                        },
+                      ),
+                    ],
+                  ),
+                  body: IndexedStack(
+                    index: _currentIndex,
+                    children: [
+                      _buildOverviewTab(user?.displayName, vehicles, maintenances, fuels, alerts),
+                      _buildVehiclesTab(vehicles, alerts),
+                      _buildMaintenancesTab(vehicles, maintenances),
+                      _buildFuelTab(vehicles, fuels),
+                    ],
+                  ),
+                  bottomNavigationBar: NavigationBar(
+                    selectedIndex: _currentIndex,
+                    onDestinationSelected: (i) => setState(() => _currentIndex = i),
+                    destinations: [
+                      NavigationDestination(
+                        icon: Badge(
+                          isLabelVisible: alerts.isNotEmpty,
+                          label: Text('${alerts.length}'),
+                          child: const Icon(Icons.home_outlined),
+                        ),
+                        selectedIcon: Badge(
+                          isLabelVisible: alerts.isNotEmpty,
+                          label: Text('${alerts.length}'),
+                          child: const Icon(Icons.home),
+                        ),
+                        label: 'Início',
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.directions_car_outlined),
+                        selectedIcon: const Icon(Icons.directions_car),
+                        label: 'Veículos',
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.build_outlined),
+                        selectedIcon: const Icon(Icons.build),
+                        label: 'Manutenções',
+                      ),
+                      NavigationDestination(
+                        icon: const Icon(Icons.local_gas_station_outlined),
+                        selectedIcon: const Icon(Icons.local_gas_station),
+                        label: 'Abastecimentos',
+                      ),
+                    ],
+                  ),
+                  floatingActionButton: _buildFab(vehicles),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget? _buildFab(List<Vehicle> vehicles) {
+    switch (_currentIndex) {
+      case 1:
+        return FloatingActionButton.extended(
+          onPressed: () => _showVehicleDialog(context),
+          icon: const Icon(Icons.add),
+          label: const Text('Novo Veículo'),
+        );
+      case 2:
+        return vehicles.isEmpty
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () => _showMaintenanceDialog(context, vehicles),
+                icon: const Icon(Icons.add),
+                label: const Text('Nova Manutenção'),
+              );
+      case 3:
+        return vehicles.isEmpty
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () => _showFuelDialog(context, vehicles),
+                icon: const Icon(Icons.add),
+                label: const Text('Novo Abastecimento'),
+              );
+      default:
+        return vehicles.isEmpty
+            ? FloatingActionButton.extended(
+                onPressed: () => _showVehicleDialog(context),
+                icon: const Icon(Icons.add),
+                label: const Text('Cadastrar Veículo'),
+              )
+            : null;
+    }
+  }
+
+  // --- TAB 0: VISÃO GERAL ---
+  Widget _buildOverviewTab(
+    String? name,
+    List<Vehicle> vehicles,
+    List<Maintenance> maintenances,
+    List<FuelRecord> fuels,
+    List<MaintenanceAlert> alerts,
+  ) {
+    final now = DateTime.now();
+    final monthMaintenances = maintenances.where((m) => Calculations.sameMonth(m.date, now));
+    final monthFuels = fuels.where((f) => Calculations.sameMonth(f.date, now));
+
+    final totalSpentMonth =
+        Calculations.maintenanceTotal(monthMaintenances) + Calculations.fuelTotal(monthFuels);
+    final avgConsumption = Calculations.averageConsumption(fuels);
+
+    return ListView(
+      padding: pagePadding(context),
+      children: [
+        Text(
+          'Olá, ${name ?? 'Motorista'}!',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        Text(
+          appSlogan,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+        ),
+        const SizedBox(height: 20),
+        SummaryGrid(
+          children: [
+            SummaryCard(
+              icon: Icons.directions_car,
+              label: 'Veículos',
+              value: '${vehicles.length}',
+            ),
+            SummaryCard(
+              icon: Icons.attach_money,
+              label: 'Gastos este mês',
+              value: formatMoney(totalSpentMonth),
+              color: AppColors.goldenPollen,
+            ),
+            SummaryCard(
+              icon: Icons.notifications_active,
+              label: 'Alertas ativos',
+              value: '${alerts.length}',
+              color: alerts.isNotEmpty ? AppColors.danger : AppColors.success,
+            ),
+            SummaryCard(
+              icon: Icons.local_gas_station,
+              label: 'Consumo médio',
+              value: avgConsumption != null ? '${formatNumber(avgConsumption, 1)} km/l' : '--',
+            ),
+          ],
+        ),
+        SectionTitle(
+          'Alertas de Serviços',
+          trailing: alerts.isEmpty
+              ? null
+              : TextButton(
+                  onPressed: () => setState(() => _currentIndex = 2),
+                  child: const Text('Ver todos'),
+                ),
+        ),
+        if (alerts.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline, color: AppColors.success, size: 36),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text('Tudo em dia!', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('Nenhuma manutenção pendente ou atrasada.'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...alerts.take(3).map((a) => AlertTile(
+                alert: a,
+                onTap: () => setState(() => _currentIndex = 2),
+              )),
+        const SectionTitle('Últimas Manutenções'),
+        if (maintenances.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('Nenhuma manutenção registrada ainda.'),
+          )
+        else
+          ...maintenances.take(3).map((m) {
+            final v = vehicles.cast<Vehicle?>().firstWhere((v) => v?.id == m.vehicleId, orElse: () => null);
+            return MaintenanceTile(maintenance: m, vehicleName: v?.name);
+          }),
+        const SectionTitle('Últimos Abastecimentos'),
+        if (fuels.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('Nenhum abastecimento registrado ainda.'),
+          )
+        else
+          ...fuels.take(3).map((f) => FuelTile(record: f)),
+      ],
+    );
+  }
+
+  // --- TAB 1: VEÍCULOS ---
+  Widget _buildVehiclesTab(List<Vehicle> vehicles, List<MaintenanceAlert> alerts) {
+    if (vehicles.isEmpty) {
+      return EmptyState(
+        icon: Icons.directions_car_outlined,
+        title: 'Nenhum veículo cadastrado',
+        message: 'Cadastre seu carro ou moto para gerenciar manutenções, abastecimentos e tabela FIPE.',
+        actionLabel: 'Cadastrar Veículo',
+        onAction: () => _showVehicleDialog(context),
+      );
+    }
+
+    return ListView(
+      padding: pagePadding(context),
+      children: [
+        const SectionTitle('Meus Veículos'),
+        ...vehicles.map((v) {
+          final count = alerts.where((a) => a.vehicle.id == v.id).length;
+          return VehicleCard(
+            vehicle: v,
+            alertCount: count,
+            onTap: () => _showVehicleDetailsModal(context, v),
+          );
+        }),
+      ],
+    );
+  }
+
+  // --- TAB 2: MANUTENÇÕES ---
+  Widget _buildMaintenancesTab(List<Vehicle> vehicles, List<Maintenance> maintenances) {
+    if (vehicles.isEmpty) {
+      return EmptyState(
+        icon: Icons.directions_car,
+        title: 'Cadastre um veículo primeiro',
+        message: 'Para registrar manutenções você precisa ter pelo menos um veículo cadastrado.',
+        actionLabel: 'Cadastrar Veículo',
+        onAction: () => _showVehicleDialog(context),
+      );
+    }
+
+    final filtered = _selectedVehicleFilter == null
+        ? maintenances
+        : maintenances.where((m) => m.vehicleId == _selectedVehicleFilter).toList();
+
+    return ListView(
+      padding: pagePadding(context),
+      children: [
+        Row(
+          children: [
+            const Expanded(child: SectionTitle('Histórico de Manutenções')),
+            if (vehicles.length > 1)
+              DropdownButton<String?>(
+                value: _selectedVehicleFilter,
+                hint: const Text('Todos'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Todos os veículos')),
+                  ...vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.name))),
+                ],
+                onChanged: (val) => setState(() => _selectedVehicleFilter = val),
+              ),
+          ],
+        ),
+        if (filtered.isEmpty)
+          const EmptyState(
+            icon: Icons.build_outlined,
+            title: 'Nenhuma manutenção',
+            message: 'Toque no botão + para registrar uma nova manutenção.',
+          )
+        else
+          ...filtered.map((m) {
+            final v = vehicles.cast<Vehicle?>().firstWhere((x) => x?.id == m.vehicleId, orElse: () => null);
+            return MaintenanceTile(
+              maintenance: m,
+              vehicleName: v?.name,
+              onTap: () => _showMaintenanceDetailsModal(context, m, v),
+            );
+          }),
+      ],
+    );
+  }
+
+  // --- TAB 3: ABASTECIMENTOS ---
+  Widget _buildFuelTab(List<Vehicle> vehicles, List<FuelRecord> fuels) {
+    if (vehicles.isEmpty) {
+      return EmptyState(
+        icon: Icons.directions_car,
+        title: 'Cadastre um veículo primeiro',
+        message: 'Para registrar abastecimentos você precisa ter pelo menos um veículo cadastrado.',
+        actionLabel: 'Cadastrar Veículo',
+        onAction: () => _showVehicleDialog(context),
+      );
+    }
+
+    final filtered = _selectedVehicleFilter == null
+        ? fuels
+        : fuels.where((f) => f.vehicleId == _selectedVehicleFilter).toList();
+
+    return ListView(
+      padding: pagePadding(context),
+      children: [
+        Row(
+          children: [
+            const Expanded(child: SectionTitle('Histórico de Abastecimentos')),
+            if (vehicles.length > 1)
+              DropdownButton<String?>(
+                value: _selectedVehicleFilter,
+                hint: const Text('Todos'),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('Todos os veículos')),
+                  ...vehicles.map((v) => DropdownMenuItem(value: v.id, child: Text(v.name))),
+                ],
+                onChanged: (val) => setState(() => _selectedVehicleFilter = val),
+              ),
+          ],
+        ),
+        if (filtered.isEmpty)
+          const EmptyState(
+            icon: Icons.local_gas_station_outlined,
+            title: 'Nenhum abastecimento',
+            message: 'Toque no botão + para registrar um novo abastecimento.',
+          )
+        else
+          ...filtered.map((f) => FuelTile(
+                record: f,
+                onTap: () => _showFuelDetailsModal(context, f),
+              )),
+      ],
+    );
+  }
+
+  // ==========================================
+  // MODAIS E DIÁLOGOS DE CADASTRO
+  // ==========================================
+
+  // --- Novo Veículo / Editar Veículo ---
+  void _showVehicleDialog(BuildContext context, [Vehicle? existing]) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _VehicleFormSheet(existing: existing, repo: _vehicleRepo),
+    );
+  }
+
+  // --- Detalhes do Veículo ---
+  void _showVehicleDetailsModal(BuildContext context, Vehicle vehicle) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    vehicle.isCar ? Icons.directions_car : Icons.two_wheeler,
+                    color: AppColors.goldenPollen,
+                    size: 32,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      vehicle.name,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.speed),
+                title: const Text('Quilometragem atual'),
+                subtitle: Text(formatKm(vehicle.currentKm)),
+                trailing: TextButton(
+                  child: const Text('Atualizar'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showUpdateKmDialog(context, vehicle);
+                  },
+                ),
+              ),
+              if (vehicle.plate.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.badge_outlined),
+                  title: const Text('Placa'),
+                  subtitle: Text(vehicle.plate.toUpperCase()),
+                ),
+              if (vehicle.isCar && vehicle.transmission.isNotEmpty)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.settings),
+                  title: const Text('Câmbio'),
+                  subtitle: Text(vehicle.transmission),
+                ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.request_quote),
+                title: const Text('Tabela FIPE'),
+                subtitle: Text(
+                  vehicle.fipeValue.isNotEmpty
+                      ? '${vehicle.fipeValue} (${vehicle.fipeReference})'
+                      : 'Não consultada',
+                ),
+                trailing: TextButton(
+                  child: const Text('Consultar'),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showFipeLookupDialog(context, vehicle);
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.edit),
+                      label: const Text('Editar'),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showVehicleDialog(context, vehicle);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Excluir'),
+                      onPressed: () async {
+                        final confirm = await confirmDialog(
+                          context,
+                          title: 'Excluir veículo',
+                          message:
+                              'Deseja excluir "${vehicle.name}"? Todas as manutenções e abastecimentos também serão apagados.',
+                        );
+                        if (confirm) {
+                          await _vehicleRepo.delete(vehicle.id);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            showMessage(context, 'Veículo excluído com sucesso.');
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --- Atualizar Quilometragem ---
+  void _showUpdateKmDialog(BuildContext context, Vehicle vehicle) {
+    final controller = TextEditingController(text: '${vehicle.currentKm}');
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Atualizar Quilometragem'),
+        content: Form(
+          key: formKey,
+          child: AppTextField(
+            controller: controller,
+            label: 'Nova Quilometragem (km)',
+            icon: Icons.speed,
+            keyboardType: TextInputType.number,
+            validator: (v) => Validators.number(v, field: 'Quilometragem'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final km = int.tryParse(controller.text) ?? 0;
+              await _vehicleRepo.setKm(vehicle.id, km);
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext);
+                showMessage(context, 'Quilometragem atualizada para ${formatKm(km)}.');
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Consulta FIPE ---
+  void _showFipeLookupDialog(BuildContext context, Vehicle vehicle) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _FipeLookupSheet(vehicle: vehicle, repo: _vehicleRepo),
+    );
+  }
+
+  // --- Nova Manutenção ---
+  void _showMaintenanceDialog(BuildContext context, List<Vehicle> vehicles, [Maintenance? existing]) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _MaintenanceFormSheet(
+        vehicles: vehicles,
+        existing: existing,
+        mRepo: _maintenanceRepo,
+        vRepo: _vehicleRepo,
+      ),
+    );
+  }
+
+  void _showMaintenanceDetailsModal(BuildContext context, Maintenance m, Vehicle? v) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(m.category, style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            Text(v?.name ?? 'Veículo', style: const TextStyle(color: Colors.grey)),
+            const Divider(height: 24),
+            Text('Data: ${formatDate(m.date)}'),
+            Text('Quilometragem: ${formatKm(m.km)}'),
+            Text('Valor: ${formatMoney(m.cost)}'),
+            if (m.notes.isNotEmpty) Text('Observações: ${m.notes}'),
+            if (m.nextKm != null || m.nextDate != null) ...[
+              const SizedBox(height: 8),
+              const Text('Próximo Serviço:', style: TextStyle(fontWeight: FontWeight.bold)),
+              if (m.nextKm != null) Text('• Com: ${formatKm(m.nextKm!)}'),
+              if (m.nextDate != null) Text('• Em: ${formatDate(m.nextDate!)}'),
+            ],
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Excluir'),
+                    onPressed: () async {
+                      final confirm = await confirmDialog(
+                        sheetContext,
+                        title: 'Excluir Manutenção',
+                        message: 'Deseja apagar este registro de manutenção?',
+                      );
+                      if (confirm) {
+                        await _maintenanceRepo.delete(m.id);
+                        if (sheetContext.mounted) {
+                          Navigator.pop(sheetContext);
+                          showMessage(context, 'Manutenção excluída.');
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- Novo Abastecimento ---
+  void _showFuelDialog(BuildContext context, List<Vehicle> vehicles, [FuelRecord? existing]) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _FuelFormSheet(
+        vehicles: vehicles,
+        existing: existing,
+        fRepo: _fuelRepo,
+        vRepo: _vehicleRepo,
+      ),
+    );
+  }
+
+  void _showFuelDetailsModal(BuildContext context, FuelRecord f) {
+    showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Abastecimento', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            const Divider(height: 24),
+            Text('Data: ${formatDate(f.date)}'),
+            Text('Quilometragem: ${formatKm(f.km)}'),
+            Text('Volume: ${formatNumber(f.liters, 2)} Litros'),
+            Text('Preço por Litro: ${formatMoney(f.pricePerLiter)}'),
+            Text('Total Pago: ${formatMoney(f.totalPrice)}'),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+              icon: const Icon(Icons.delete),
+              label: const Text('Excluir'),
+              onPressed: () async {
+                final confirm = await confirmDialog(
+                  sheetContext,
+                  title: 'Excluir Abastecimento',
+                  message: 'Deseja apagar este registro de abastecimento?',
+                );
+                if (confirm) {
+                  await _fuelRepo.delete(f.id);
+                  if (sheetContext.mounted) {
+                    Navigator.pop(sheetContext);
+                    showMessage(context, 'Abastecimento excluído.');
+                  }
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// FORMULÁRIO DE VEÍCULO
+// ==========================================
+class _VehicleFormSheet extends StatefulWidget {
+  final Vehicle? existing;
+  final VehicleRepository repo;
+
+  const _VehicleFormSheet({this.existing, required this.repo});
+
+  @override
+  State<_VehicleFormSheet> createState() => _VehicleFormSheetState();
+}
+
+class _VehicleFormSheetState extends State<_VehicleFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+
+  late VehicleType _type;
+  late final TextEditingController _brand;
+  late final TextEditingController _model;
+  late final TextEditingController _year;
+  late final TextEditingController _plate;
+  late final TextEditingController _km;
+  String _transmission = 'Manual';
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _type = e?.type ?? VehicleType.carro;
+    _brand = TextEditingController(text: e?.brand ?? '');
+    _model = TextEditingController(text: e?.model ?? '');
+    _year = TextEditingController(text: e?.year ?? '');
+    _plate = TextEditingController(text: e?.plate ?? '');
+    _km = TextEditingController(text: e != null ? '${e.currentKm}' : '0');
+    _transmission = (e != null && e.transmission.isNotEmpty) ? e.transmission : 'Manual';
+  }
+
+  @override
+  void dispose() {
+    _brand.dispose();
+    _model.dispose();
+    _year.dispose();
+    _plate.dispose();
+    _km.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+
+    try {
+      final vehicle = Vehicle(
+        id: widget.existing?.id ?? '',
+        type: _type,
+        brand: _brand.text.trim(),
+        model: _model.text.trim(),
+        year: _year.text.trim(),
+        plate: _plate.text.trim().toUpperCase(),
+        currentKm: int.tryParse(_km.text.trim()) ?? 0,
+        transmission: _type == VehicleType.carro ? _transmission : '',
+        fipeCode: widget.existing?.fipeCode ?? '',
+        fipeValue: widget.existing?.fipeValue ?? '',
+        fipeReference: widget.existing?.fipeReference ?? '',
+      );
+
+      if (widget.existing == null) {
+        await widget.repo.add(vehicle);
+      } else {
+        await widget.repo.update(vehicle);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(context, 'Veículo salvo com sucesso!');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, 'Erro ao salvar veículo: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.existing == null ? 'Cadastrar Veículo' : 'Editar Veículo',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              SegmentedButton<VehicleType>(
+                segments: const [
+                  ButtonSegment(value: VehicleType.carro, label: Text('Carro'), icon: Icon(Icons.directions_car)),
+                  ButtonSegment(value: VehicleType.moto, label: Text('Moto'), icon: Icon(Icons.two_wheeler)),
+                ],
+                selected: {_type},
+                onSelectionChanged: (set) => setState(() => _type = set.first),
+              ),
+              const SizedBox(height: 16),
+              AppTextField(
+                controller: _brand,
+                label: 'Marca',
+                icon: Icons.business,
+                hint: 'Ex: Volkswagen, Honda',
+                validator: (v) => Validators.required(v, 'Marca'),
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                controller: _model,
+                label: 'Modelo',
+                icon: Icons.directions_car_filled,
+                hint: 'Ex: Gol 1.0, Civic',
+                validator: (v) => Validators.required(v, 'Modelo'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _year,
+                      label: 'Ano',
+                      icon: Icons.calendar_today,
+                      keyboardType: TextInputType.number,
+                      validator: Validators.year,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextField(
+                      controller: _km,
+                      label: 'Km Atual',
+                      icon: Icons.speed,
+                      keyboardType: TextInputType.number,
+                      validator: (v) => Validators.number(v, field: 'Quilometragem'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                controller: _plate,
+                label: 'Placa (opcional)',
+                icon: Icons.badge_outlined,
+                textCapitalization: TextCapitalization.characters,
+              ),
+              if (_type == VehicleType.carro) ...[
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: _transmission,
+                  decoration: const InputDecoration(
+                    labelText: 'Câmbio',
+                    prefixIcon: Icon(Icons.settings),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Manual', child: Text('Manual')),
+                    DropdownMenuItem(value: 'Automático', child: Text('Automático')),
+                  ],
+                  onChanged: (val) => setState(() => _transmission = val!),
+                ),
+              ],
+              const SizedBox(height: 24),
+              LoadingButton(
+                label: 'Salvar Veículo',
+                loading: _loading,
+                onPressed: _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// FORMULÁRIO DE MANUTENÇÃO
+// ==========================================
+class _MaintenanceFormSheet extends StatefulWidget {
+  final List<Vehicle> vehicles;
+  final Maintenance? existing;
+  final MaintenanceRepository mRepo;
+  final VehicleRepository vRepo;
+
+  const _MaintenanceFormSheet({
+    required this.vehicles,
+    this.existing,
+    required this.mRepo,
+    required this.vRepo,
+  });
+
+  @override
+  State<_MaintenanceFormSheet> createState() => _MaintenanceFormSheetState();
+}
+
+class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+
+  late String _selectedVehicleId;
+  late String _category;
+  late DateTime _date;
+  late final TextEditingController _km;
+  late final TextEditingController _cost;
+  late final TextEditingController _notes;
+
+  bool _scheduleNext = false;
+  late final TextEditingController _nextKm;
+  DateTime? _nextDate;
+
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _selectedVehicleId = e?.vehicleId ?? widget.vehicles.first.id;
+
+    final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId, orElse: () => widget.vehicles.first);
+    final categories = MaintenanceCatalog.categoriesFor(vehicle);
+
+    _category = (e != null && categories.contains(e.category)) ? e.category : categories.first;
+    _date = e?.date ?? DateTime.now();
+    _km = TextEditingController(text: '${e?.km ?? vehicle.currentKm}');
+    _cost = TextEditingController(text: e != null ? '${e.cost}' : '');
+    _notes = TextEditingController(text: e?.notes ?? '');
+
+    _scheduleNext = (e?.nextKm != null || e?.nextDate != null);
+    _nextKm = TextEditingController(text: e?.nextKm != null ? '${e!.nextKm}' : '');
+    _nextDate = e?.nextDate;
+  }
+
+  @override
+  void dispose() {
+    _km.dispose();
+    _cost.dispose();
+    _notes.dispose();
+    _nextKm.dispose();
+    super.dispose();
+  }
+
+  void _onCategoryChanged(String? val) {
+    if (val == null) return;
+    setState(() {
+      _category = val;
+      final item = MaintenanceCatalog.find(val);
+      if (item != null) {
+        final currentKm = int.tryParse(_km.text) ?? 0;
+        if (item.intervalKm != null) {
+          _nextKm.text = '${currentKm + item.intervalKm!}';
+          _scheduleNext = true;
+        }
+        if (item.intervalMonths != null) {
+          _nextDate = DateTime(_date.year, _date.month + item.intervalMonths!, _date.day);
+          _scheduleNext = true;
+        }
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+
+    try {
+      final kmVal = int.tryParse(_km.text.trim()) ?? 0;
+      final costVal = parseNumber(_cost.text.trim()) ?? 0;
+      final nextKmVal = _scheduleNext ? int.tryParse(_nextKm.text.trim()) : null;
+
+      final maintenance = Maintenance(
+        id: widget.existing?.id ?? '',
+        vehicleId: _selectedVehicleId,
+        category: _category,
+        date: _date,
+        km: kmVal,
+        cost: costVal,
+        notes: _notes.text.trim(),
+        nextKm: nextKmVal,
+        nextDate: _scheduleNext ? _nextDate : null,
+      );
+
+      if (widget.existing == null) {
+        await widget.mRepo.add(maintenance);
+      } else {
+        await widget.mRepo.update(maintenance);
+      }
+
+      final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId);
+      await widget.vRepo.updateKmIfGreater(vehicle, kmVal);
+
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(context, 'Manutenção salva com sucesso!');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, 'Erro ao salvar manutenção: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId, orElse: () => widget.vehicles.first);
+    final categories = MaintenanceCatalog.categoriesFor(vehicle);
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.existing == null ? 'Nova Manutenção' : 'Editar Manutenção',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedVehicleId,
+                decoration: const InputDecoration(labelText: 'Veículo', prefixIcon: Icon(Icons.directions_car)),
+                items: widget.vehicles
+                    .map((v) => DropdownMenuItem(value: v.id, child: Text(v.name)))
+                    .toList(),
+                onChanged: (val) => setState(() => _selectedVehicleId = val!),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: categories.contains(_category) ? _category : categories.first,
+                decoration: const InputDecoration(labelText: 'Serviço / Categoria', prefixIcon: Icon(Icons.build)),
+                items: categories
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)))
+                    .toList(),
+                onChanged: _onCategoryChanged,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _km,
+                      label: 'Km Realizado',
+                      icon: Icons.speed,
+                      keyboardType: TextInputType.number,
+                      validator: (v) => Validators.number(v, field: 'Quilometragem'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextField(
+                      controller: _cost,
+                      label: r'Valor (R$)',
+                      icon: Icons.attach_money,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (v) => Validators.number(v, field: 'Valor'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_month),
+                title: Text('Data: ${formatDate(_date)}'),
+                trailing: TextButton(
+                  child: const Text('Alterar'),
+                  onPressed: () async {
+                    final picked = await pickDate(context, _date);
+                    if (picked != null) setState(() => _date = picked);
+                  },
+                ),
+              ),
+              AppTextField(
+                controller: _notes,
+                label: 'Observações (opcional)',
+                icon: Icons.notes,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Agendar próximo serviço'),
+                value: _scheduleNext,
+                onChanged: (val) => setState(() => _scheduleNext = val),
+              ),
+              if (_scheduleNext) ...[
+                AppTextField(
+                  controller: _nextKm,
+                  label: 'Próximo Km (opcional)',
+                  icon: Icons.add_road,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event),
+                  title: Text(_nextDate != null ? 'Próxima Data: ${formatDate(_nextDate!)}' : 'Selecionar Próxima Data'),
+                  trailing: TextButton(
+                    child: const Text('Escolher Data'),
+                    onPressed: () async {
+                      final picked = await pickDate(context, _nextDate ?? DateTime.now().add(const Duration(days: 180)));
+                      if (picked != null) setState(() => _nextDate = picked);
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              LoadingButton(
+                label: 'Salvar Manutenção',
+                loading: _loading,
+                onPressed: _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// FORMULÁRIO DE ABASTECIMENTO
+// ==========================================
+class _FuelFormSheet extends StatefulWidget {
+  final List<Vehicle> vehicles;
+  final FuelRecord? existing;
+  final FuelRepository fRepo;
+  final VehicleRepository vRepo;
+
+  const _FuelFormSheet({
+    required this.vehicles,
+    this.existing,
+    required this.fRepo,
+    required this.vRepo,
+  });
+
+  @override
+  State<_FuelFormSheet> createState() => _FuelFormSheetState();
+}
+
+class _FuelFormSheetState extends State<_FuelFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+
+  late String _selectedVehicleId;
+  late DateTime _date;
+  late final TextEditingController _km;
+  late final TextEditingController _liters;
+  late final TextEditingController _price;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    _selectedVehicleId = e?.vehicleId ?? widget.vehicles.first.id;
+
+    final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId, orElse: () => widget.vehicles.first);
+
+    _date = e?.date ?? DateTime.now();
+    _km = TextEditingController(text: '${e?.km ?? vehicle.currentKm}');
+    _liters = TextEditingController(text: e != null ? '${e.liters}' : '');
+    _price = TextEditingController(text: e != null ? '${e.totalPrice}' : '');
+  }
+
+  @override
+  void dispose() {
+    _km.dispose();
+    _liters.dispose();
+    _price.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _loading = true);
+
+    try {
+      final kmVal = int.tryParse(_km.text.trim()) ?? 0;
+      final litersVal = parseNumber(_liters.text.trim()) ?? 0;
+      final priceVal = parseNumber(_price.text.trim()) ?? 0;
+
+      final record = FuelRecord(
+        id: widget.existing?.id ?? '',
+        vehicleId: _selectedVehicleId,
+        date: _date,
+        km: kmVal,
+        liters: litersVal,
+        totalPrice: priceVal,
+      );
+
+      if (widget.existing == null) {
+        await widget.fRepo.add(record);
+      } else {
+        await widget.fRepo.update(record);
+      }
+
+      final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId);
+      await widget.vRepo.updateKmIfGreater(vehicle, kmVal);
+
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(context, 'Abastecimento salvo com sucesso!');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, 'Erro ao salvar abastecimento: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.existing == null ? 'Novo Abastecimento' : 'Editar Abastecimento',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedVehicleId,
+                decoration: const InputDecoration(labelText: 'Veículo', prefixIcon: Icon(Icons.directions_car)),
+                items: widget.vehicles
+                    .map((v) => DropdownMenuItem(value: v.id, child: Text(v.name)))
+                    .toList(),
+                onChanged: (val) => setState(() => _selectedVehicleId = val!),
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                controller: _km,
+                label: 'Km Atual do Veículo',
+                icon: Icons.speed,
+                keyboardType: TextInputType.number,
+                validator: (v) => Validators.number(v, field: 'Quilometragem'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      controller: _liters,
+                      label: 'Litros (L)',
+                      icon: Icons.local_gas_station,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (v) => Validators.number(v, field: 'Litros'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextField(
+                      controller: _price,
+                      label: r'Valor Total (R$)',
+                      icon: Icons.attach_money,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      validator: (v) => Validators.number(v, field: 'Valor'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_month),
+                title: Text('Data: ${formatDate(_date)}'),
+                trailing: TextButton(
+                  child: const Text('Alterar'),
+                  onPressed: () async {
+                    final picked = await pickDate(context, _date);
+                    if (picked != null) setState(() => _date = picked);
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              LoadingButton(
+                label: 'Salvar Abastecimento',
+                loading: _loading,
+                onPressed: _save,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// CONSULTA FIPE
+// ==========================================
+class _FipeLookupSheet extends StatefulWidget {
+  final Vehicle vehicle;
+  final VehicleRepository repo;
+
+  const _FipeLookupSheet({required this.vehicle, required this.repo});
+
+  @override
+  State<_FipeLookupSheet> createState() => _FipeLookupSheetState();
+}
+
+class _FipeLookupSheetState extends State<_FipeLookupSheet> {
+  final _fipe = FipeService();
+
+  List<FipeItem> _brands = [];
+  List<FipeItem> _models = [];
+  List<FipeItem> _years = [];
+
+  FipeItem? _selectedBrand;
+  FipeItem? _selectedModel;
+  FipeItem? _selectedYear;
+  FipeResult? _result;
+
+  bool _loadingBrands = false;
+  bool _loadingModels = false;
+  bool _loadingYears = false;
+  bool _loadingPrice = false;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBrands();
+  }
+
+  Future<void> _loadBrands() async {
+    setState(() {
+      _loadingBrands = true;
+      _error = null;
+    });
+    try {
+      final list = await _fipe.brands(widget.vehicle.type);
+      if (mounted) setState(() => _brands = list);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Erro ao carregar marcas FIPE: $e');
+    } finally {
+      if (mounted) setState(() => _loadingBrands = false);
+    }
+  }
+
+  Future<void> _loadModels(FipeItem brand) async {
+    setState(() {
+      _selectedBrand = brand;
+      _selectedModel = null;
+      _selectedYear = null;
+      _models = [];
+      _years = [];
+      _result = null;
+      _loadingModels = true;
+      _error = null;
+    });
+    try {
+      final list = await _fipe.models(widget.vehicle.type, brand.code);
+      if (mounted) setState(() => _models = list);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Erro ao carregar modelos: $e');
+    } finally {
+      if (mounted) setState(() => _loadingModels = false);
+    }
+  }
+
+  Future<void> _loadYears(FipeItem model) async {
+    if (_selectedBrand == null) return;
+    setState(() {
+      _selectedModel = model;
+      _selectedYear = null;
+      _years = [];
+      _result = null;
+      _loadingYears = true;
+      _error = null;
+    });
+    try {
+      final list = await _fipe.years(widget.vehicle.type, _selectedBrand!.code, model.code);
+      if (mounted) setState(() => _years = list);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Erro ao carregar anos: $e');
+    } finally {
+      if (mounted) setState(() => _loadingYears = false);
+    }
+  }
+
+  Future<void> _loadPrice(FipeItem year) async {
+    if (_selectedBrand == null || _selectedModel == null) return;
+    setState(() {
+      _selectedYear = year;
+      _loadingPrice = true;
+      _error = null;
+    });
+    try {
+      final res = await _fipe.price(widget.vehicle.type, _selectedBrand!.code, _selectedModel!.code, year.code);
+      if (mounted) setState(() => _result = res);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Erro ao obter preço FIPE: $e');
+    } finally {
+      if (mounted) setState(() => _loadingPrice = false);
+    }
+  }
+
+  Future<void> _saveFipe() async {
+    if (_result == null) return;
+    setState(() => _saving = true);
+    try {
+      final updated = Vehicle(
+        id: widget.vehicle.id,
+        type: widget.vehicle.type,
+        brand: widget.vehicle.brand,
+        model: widget.vehicle.model,
+        year: widget.vehicle.year,
+        plate: widget.vehicle.plate,
+        currentKm: widget.vehicle.currentKm,
+        transmission: widget.vehicle.transmission,
+        fipeCode: _result!.code,
+        fipeValue: _result!.value,
+        fipeReference: _result!.reference,
+      );
+      await widget.repo.update(updated);
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(context, 'Dados FIPE salvos no veículo!');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, 'Erro ao salvar dados FIPE: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Consulta Tabela FIPE', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            Text(widget.vehicle.name, style: const TextStyle(color: Colors.grey)),
+            const SizedBox(height: 16),
+            if (_error != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
+              ),
+            if (_loadingBrands)
+              const Center(child: CircularProgressIndicator())
+            else
+              DropdownButtonFormField<FipeItem>(
+                initialValue: _selectedBrand,
+                decoration: const InputDecoration(labelText: 'Marca FIPE'),
+                items: _brands.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
+                onChanged: (b) => b != null ? _loadModels(b) : null,
+              ),
+            const SizedBox(height: 12),
+            if (_loadingModels)
+              const Center(child: CircularProgressIndicator())
+            else if (_models.isNotEmpty)
+              DropdownButtonFormField<FipeItem>(
+                initialValue: _selectedModel,
+                decoration: const InputDecoration(labelText: 'Modelo FIPE'),
+                items: _models.map((m) => DropdownMenuItem(value: m, child: Text(m.name, overflow: TextOverflow.ellipsis))).toList(),
+                onChanged: (m) => m != null ? _loadYears(m) : null,
+              ),
+            const SizedBox(height: 12),
+            if (_loadingYears)
+              const Center(child: CircularProgressIndicator())
+            else if (_years.isNotEmpty)
+              DropdownButtonFormField<FipeItem>(
+                initialValue: _selectedYear,
+                decoration: const InputDecoration(labelText: 'Ano / Combustível'),
+                items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y.name))).toList(),
+                onChanged: (y) => y != null ? _loadPrice(y) : null,
+              ),
+            const SizedBox(height: 16),
+            if (_loadingPrice) const Center(child: CircularProgressIndicator()),
+            if (_result != null) ...[
+              Card(
+                color: AppColors.goldenPollen.withValues(alpha: 0.15),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      const Text('Valor FIPE Oficial:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(
+                        _result!.value,
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.goldenPollen,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text('Código: ${_result!.code} • Mês: ${_result!.reference}', style: Theme.of(context).textTheme.bodySmall),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              LoadingButton(
+                label: 'Salvar Valor FIPE no Veículo',
+                loading: _saving,
+                onPressed: _saveFipe,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
