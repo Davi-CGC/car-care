@@ -20,12 +20,14 @@ import '../../utils/maintenance_catalog.dart';
 import '../../utils/validators.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/app_text_field.dart';
+import '../../widgets/consumption_thermometer.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/layout.dart';
 import '../../widgets/loading_button.dart';
 import '../../widgets/record_tiles.dart';
 import '../../widgets/summary_card.dart';
 import '../../widgets/vehicle_card.dart';
+import '../manual/manual_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -104,13 +106,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  body: IndexedStack(
-                    index: _currentIndex,
+                  body: Stack(
                     children: [
-                      _buildOverviewTab(user?.displayName, vehicles, maintenances, fuels, alerts),
-                      _buildVehiclesTab(vehicles, alerts),
-                      _buildMaintenancesTab(vehicles, maintenances),
-                      _buildFuelTab(vehicles, fuels),
+                      IndexedStack(
+                        index: _currentIndex,
+                        children: [
+                          _buildOverviewTab(user?.displayName, vehicles, maintenances, fuels, alerts),
+                          _buildVehiclesTab(vehicles, alerts),
+                          _buildMaintenancesTab(vehicles, maintenances),
+                          _buildFuelTab(vehicles, fuels),
+                        ],
+                      ),
+                      Positioned(
+                        left: 16,
+                        bottom: 16,
+                        child: FloatingActionButton(
+                          heroTag: 'help_manual_fab',
+                          backgroundColor: AppColors.goldenPollen,
+                          foregroundColor: AppColors.obsidian,
+                          tooltip: 'Manual & Dúvidas',
+                          elevation: 4,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ManualScreen()),
+                            );
+                          },
+                          child: const Icon(
+                            Icons.question_mark,
+                            color: AppColors.obsidian,
+                            size: 26,
+                            weight: 700,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   bottomNavigationBar: NavigationBar(
@@ -246,6 +275,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+        if (avgConsumption != null) ...[
+          const SizedBox(height: 16),
+          Builder(
+            builder: (_) {
+              final eval = Calculations.evaluateConsumption(
+                avgConsumption,
+                isCar: vehicles.isEmpty ? true : vehicles.first.isCar,
+                fuelType: fuels.isEmpty ? FuelTypes.gasolina : fuels.first.fuelType,
+              );
+              if (eval == null) return const SizedBox.shrink();
+              return ConsumptionThermometer(
+                evaluation: eval,
+                unit: fuels.isNotEmpty && fuels.first.isGnv ? 'km/m³' : 'km/l',
+              );
+            },
+          ),
+        ],
         SectionTitle(
           'Alertas de Serviços',
           trailing: alerts.isEmpty
@@ -425,11 +471,35 @@ class _HomeScreenState extends State<HomeScreen> {
             title: 'Nenhum abastecimento',
             message: 'Toque no botão + para registrar um novo abastecimento.',
           )
-        else
+        else ...[
+          Builder(
+            builder: (_) {
+              final vObj = _selectedVehicleFilter != null
+                  ? vehicles.firstWhere((x) => x.id == _selectedVehicleFilter, orElse: () => vehicles.first)
+                  : vehicles.first;
+              final vConsumption = Calculations.averageConsumption(filtered);
+              if (vConsumption == null) return const SizedBox.shrink();
+              final lastFuel = filtered.first;
+              final eval = Calculations.evaluateConsumption(
+                vConsumption,
+                isCar: vObj.isCar,
+                fuelType: lastFuel.fuelType,
+              );
+              if (eval == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ConsumptionThermometer(
+                  evaluation: eval,
+                  unit: lastFuel.unit == 'm³' ? 'km/m³' : 'km/l',
+                ),
+              );
+            },
+          ),
           ...filtered.map((f) => FuelTile(
                 record: f,
                 onTap: () => _showFuelDetailsModal(context, f),
               )),
+        ],
       ],
     );
   }
@@ -714,9 +784,10 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('Abastecimento', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const Divider(height: 24),
             Text('Data: ${formatDate(f.date)}'),
+            Text('Combustível: ${f.fuelType}'),
             Text('Quilometragem: ${formatKm(f.km)}'),
-            Text('Volume: ${formatNumber(f.liters, 2)} Litros'),
-            Text('Preço por Litro: ${formatMoney(f.pricePerLiter)}'),
+            Text('Volume: ${formatNumber(f.liters, 2)} ${f.unit}'),
+            Text('Preço por ${f.unit}: ${formatMoney(f.pricePerLiter)}'),
             Text('Total Pago: ${formatMoney(f.totalPrice)}'),
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -1202,6 +1273,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   final _formKey = GlobalKey<FormState>();
 
   late String _selectedVehicleId;
+  late String _selectedFuelType;
   late DateTime _date;
   late final TextEditingController _km;
   late final TextEditingController _liters;
@@ -1213,6 +1285,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     super.initState();
     final e = widget.existing;
     _selectedVehicleId = e?.vehicleId ?? widget.vehicles.first.id;
+    _selectedFuelType = e?.fuelType ?? FuelTypes.gasolina;
 
     final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId, orElse: () => widget.vehicles.first);
 
@@ -1220,6 +1293,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     _km = TextEditingController(text: '${e?.km ?? vehicle.currentKm}');
     _liters = TextEditingController(text: e != null ? '${e.liters}' : '');
     _price = TextEditingController(text: e != null ? '${e.totalPrice}' : '');
+
+    _km.addListener(() => setState(() {}));
+    _liters.addListener(() => setState(() {}));
   }
 
   @override
@@ -1242,6 +1318,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
       final record = FuelRecord(
         id: widget.existing?.id ?? '',
         vehicleId: _selectedVehicleId,
+        fuelType: _selectedFuelType,
         date: _date,
         km: kmVal,
         liters: litersVal,
@@ -1255,11 +1332,19 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
       }
 
       final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId);
+      final kmUpdated = kmVal > vehicle.currentKm;
       await widget.vRepo.updateKmIfGreater(vehicle, kmVal);
 
       if (mounted) {
         Navigator.pop(context);
-        showMessage(context, 'Abastecimento salvo com sucesso!');
+        if (kmUpdated) {
+          showMessage(
+            context,
+            'Abastecimento salvo e odômetro do ${vehicle.name} atualizado para ${formatKm(kmVal)}!',
+          );
+        } else {
+          showMessage(context, 'Abastecimento salvo com sucesso!');
+        }
       }
     } catch (e) {
       if (mounted) showMessage(context, 'Erro ao salvar abastecimento: $e', error: true);
@@ -1271,6 +1356,20 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final isGnv = _selectedFuelType == FuelTypes.gnv;
+    final volumeLabel = isGnv ? 'Volume (m³)' : 'Litros (L)';
+    final volumeName = isGnv ? 'Volume em m³' : 'Litros';
+
+    final vehicle = widget.vehicles.firstWhere(
+      (v) => v.id == _selectedVehicleId,
+      orElse: () => widget.vehicles.first,
+    );
+    final currentVehicleKm = vehicle.currentKm;
+    final enteredKm = int.tryParse(_km.text.trim()) ?? 0;
+    final enteredVolume = parseNumber(_liters.text.trim()) ?? 0.0;
+    final diffKm = enteredKm - currentVehicleKm;
+    final bool showCalc = diffKm > 0 && enteredVolume > 0;
+    final double? tripConsumption = showCalc ? diffKm / enteredVolume : null;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomInset),
@@ -1292,7 +1391,31 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 items: widget.vehicles
                     .map((v) => DropdownMenuItem(value: v.id, child: Text(v.name)))
                     .toList(),
-                onChanged: (val) => setState(() => _selectedVehicleId = val!),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedVehicleId = val;
+                      if (widget.existing == null) {
+                        final v = widget.vehicles.firstWhere((x) => x.id == val);
+                        _km.text = '${v.currentKm}';
+                      }
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedFuelType,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de Combustível',
+                  prefixIcon: Icon(Icons.local_gas_station),
+                ),
+                items: FuelTypes.all
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedFuelType = val);
+                },
               ),
               const SizedBox(height: 12),
               AppTextField(
@@ -1302,16 +1425,24 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 keyboardType: TextInputType.number,
                 validator: (v) => Validators.number(v, field: 'Quilometragem'),
               ),
+              if (enteredKm <= currentVehicleKm && enteredKm > 0 && widget.existing == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 4),
+                  child: Text(
+                    'Odômetro registrado do veículo: ${formatKm(currentVehicleKm)}. Digite a quilometragem atual.',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: AppTextField(
                       controller: _liters,
-                      label: 'Litros (L)',
-                      icon: Icons.local_gas_station,
+                      label: volumeLabel,
+                      icon: isGnv ? Icons.compress : Icons.local_gas_station,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      validator: (v) => Validators.number(v, field: 'Litros'),
+                      validator: (v) => Validators.number(v, field: volumeName),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1326,6 +1457,50 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   ),
                 ],
               ),
+              if (showCalc && tripConsumption != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldenPollen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.calculate_outlined, size: 20, color: AppColors.goldenPollen),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Cálculo Automático',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.goldenPollen
+                                  : AppColors.obsidian,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '• Odômetro anterior: ${formatKm(currentVehicleKm)} ➔ Novo: ${formatKm(enteredKm)} (+${formatKm(diffKm)})',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Text(
+                        '• Rendimento calculado deste abastecimento: ${formatNumber(tripConsumption, 1)} ${isGnv ? 'km/m³' : 'km/l'}',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        '• A quilometragem do veículo será atualizada automaticamente.',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               ListTile(
                 contentPadding: EdgeInsets.zero,

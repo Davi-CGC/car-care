@@ -56,7 +56,7 @@ class FuelTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: const _IconBox(Icons.local_gas_station),
-        title: Text('${formatNumber(r.liters, 2)} L • ${formatMoney(r.pricePerLiter)}/L'),
+        title: Text('${r.fuelType} • ${formatNumber(r.liters, 2)} ${r.unit} • ${formatMoney(r.pricePerLiter)}/${r.unit}'),
         subtitle: Text('${formatDate(r.date)} • ${formatKm(r.km)}'),
         trailing: Text(formatMoney(r.totalPrice),
             style: const TextStyle(fontWeight: FontWeight.bold)),

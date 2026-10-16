@@ -4,7 +4,29 @@ import '../models/maintenance_alert.dart';
 import '../models/vehicle.dart';
 import 'constants.dart';
 
-/// Cálculos do app: alertas, consumo médio e gastos.
+enum ConsumptionLevel {
+  otimo, // Verde: Muito econômico
+  moderado, // Amarelo: Consumo padrão/normal
+  alto, // Vermelho: Consumo alto / Gastando muito
+}
+
+class ConsumptionEvaluation {
+  final double kmPerLiter;
+  final ConsumptionLevel level;
+  final String label;
+  final String description;
+  final double score; // 0.0 a 1.0 para barra de termômetro
+
+  const ConsumptionEvaluation({
+    required this.kmPerLiter,
+    required this.level,
+    required this.label,
+    required this.description,
+    required this.score,
+  });
+}
+
+/// Cálculos do app: alertas, consumo médio, termômetro e gastos.
 class Calculations {
   Calculations._();
 
@@ -55,7 +77,7 @@ class Calculations {
     return result;
   }
 
-  /// Consumo médio em km/l. Considera que todo abastecimento enche o tanque:
+  /// Consumo médio em km/l ou km/m³.
   /// distância entre o primeiro e o último registro ÷ litros (sem o primeiro).
   static double? averageConsumption(List<FuelRecord> records) {
     if (records.length < 2) return null;
@@ -64,6 +86,126 @@ class Calculations {
     final liters = sorted.skip(1).fold<double>(0, (sum, r) => sum + r.liters);
     if (distance <= 0 || liters <= 0) return null;
     return distance / liters;
+  }
+
+  /// Avalia a eficiência do consumo (Termômetro: Econômico / Normal / Alto).
+  static ConsumptionEvaluation? evaluateConsumption(
+    double? kmPerUnit, {
+    bool isCar = true,
+    String fuelType = FuelTypes.gasolina,
+  }) {
+    if (kmPerUnit == null || kmPerUnit <= 0) return null;
+
+    if (!isCar) {
+      // Motos
+      if (kmPerUnit >= 33.0) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.otimo,
+          label: 'Muito Econômico',
+          description: 'Excelente rendimento para a moto!',
+          score: 0.90,
+        );
+      } else if (kmPerUnit >= 24.0) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.moderado,
+          label: 'Normal / Moderado',
+          description: 'Média de consumo dentro do esperado.',
+          score: 0.55,
+        );
+      } else {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.alto,
+          label: 'Alto Consumo',
+          description: 'Consumindo bastante. Verifique velas, filtro e pneus.',
+          score: 0.20,
+        );
+      }
+    }
+
+    // Carros
+    if (fuelType == FuelTypes.etanol) {
+      if (kmPerUnit >= 9.5) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.otimo,
+          label: 'Muito Econômico',
+          description: 'Excelente média rodando no etanol!',
+          score: 0.90,
+        );
+      } else if (kmPerUnit >= 7.0) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.moderado,
+          label: 'Normal / Moderado',
+          description: 'Consumo padrão para combustível vegetal.',
+          score: 0.55,
+        );
+      } else {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.alto,
+          label: 'Alto Consumo',
+          description: 'Consumo alto. Atenção ao peso, calibragem e bicos.',
+          score: 0.20,
+        );
+      }
+    } else if (fuelType == FuelTypes.gnv) {
+      if (kmPerUnit >= 13.5) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.otimo,
+          label: 'Muito Econômico',
+          description: 'Ótima autonomia no gás natural!',
+          score: 0.90,
+        );
+      } else if (kmPerUnit >= 10.0) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.moderado,
+          label: 'Normal / Moderado',
+          description: 'Consumo esperado para GNV.',
+          score: 0.55,
+        );
+      } else {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.alto,
+          label: 'Alto Consumo',
+          description: 'Rendimento baixo no GNV. Cheque regulagem do kit.',
+          score: 0.20,
+        );
+      }
+    } else {
+      // Gasolina / Diesel
+      if (kmPerUnit >= 13.0) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.otimo,
+          label: 'Muito Econômico',
+          description: 'Carro muito econômico!',
+          score: 0.90,
+        );
+      } else if (kmPerUnit >= 9.0) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.moderado,
+          label: 'Normal / Moderado',
+          description: 'Consumo equilibrado para o dia a dia.',
+          score: 0.55,
+        );
+      } else {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.alto,
+          label: 'Alto Consumo',
+          description: 'Consumindo muito. Verifique alinhamento e filtros.',
+          score: 0.20,
+        );
+      }
+    }
   }
 
   static double maintenanceTotal(Iterable<Maintenance> list) =>
