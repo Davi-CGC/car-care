@@ -1,0 +1,198 @@
+rules_version = '2';
+
+// ===============================================================
+// CarCare - Cloud Firestore Security Rules (prototype)
+// ===============================================================
+//
+// Idea geral: TODOS os dados são privados. Só o usuário autenticado
+// cujo uid é igual ao {uid} do caminho pode ler/escrever. Todo o resto
+// é negado por padrão (Firestore nega tudo que não tem "allow").
+//
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Document: users/{uid}
+//   - name:      string    (required, 1..100 chars)
+//   - email:     string    (required, 3..254 chars)
+//   - createdAt: timestamp (required, immutable after create)
+//
+// Collection: users/{uid}/vehicles/{vehicleId}
+//   - type:          string    (required, 'carro' | 'moto')
+//   - brand:         string    (required, 1..100 chars)
+//   - model:         string    (required, 1..100 chars)
+//   - year:          string    (required, 0..20 chars)
+//   - plate:         string    (required, 0..20 chars)
+//   - currentKm:     number    (required, int or double, 0..10,000,000)
+//   - transmission:  string    (required, 'Manual' | 'Automático' | '')
+//   - fipeCode:      string    (required, 0..100 chars)
+//   - fipeValue:     string    (required, 0..100 chars)
+//   - fipeReference: string    (required, 0..100 chars)
+//   - createdAt:     timestamp (required, immutable after create)
+//
+// Collection: users/{uid}/maintenances/{id}
+//   - vehicleId: string    (required, 1..128 chars) - id of a vehicle of the same user
+//   - category:  string    (required, 1..100 chars)
+//   - date:      timestamp (required)
+//   - km:        number    (required, 0..10,000,000)
+//   - cost:      number    (required, 0..100,000,000)
+//   - notes:     string    (optional, 0..2000 chars)
+//   - nextKm:    number | null    (optional)
+//   - nextDate:  timestamp | null (optional)
+//   - createdAt: timestamp (required, immutable after create)
+//
+// Collection: users/{uid}/fuel/{id}
+//   - vehicleId:  string    (required, 1..128 chars)
+//   - date:       timestamp (required)
+//   - km:         number    (required, 0..10,000,000)
+//   - liters:     number    (required, 0..10,000)
+//   - totalPrice: number    (required, 0..1,000,000)
+//   - createdAt:  timestamp (required, immutable after create)
+//
+// Notes:
+//   - "number" accepts both int and double.
+//   - Because everything lives under users/{uid}, a user can never point
+//     a vehicleId at another user's vehicle (it only resolves inside
+//     their own subcollection).
+//   - On UPDATE, createdAt must keep its original value (either omit it
+//     when using update(), or send back the same value). Re-sending
+//     FieldValue.serverTimestamp() for createdAt on update is denied.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // User is logged in.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Logged-in user is the owner of the path {uid}.
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Document has all required fields and nothing else.
+    function hasValidKeys(data, required, allowed) {
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed);
+    }
+
+    // String with length between min and max.
+    function isStringLen(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    // Number (int or double) between min and max.
+    function isNumberInRange(value, min, max) {
+      return value is number && value >= min && value <= max;
+    }
+
+    // createdAt cannot change after the document is created.
+    function createdAtUnchanged() {
+      return request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // ===============================================================
+    // Domain Validators (used in BOTH create and update)
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasValidKeys(data,
+               ['name', 'email', 'createdAt'],
+               ['name', 'email', 'createdAt'])
+        && isStringLen(data.name, 1, 100)
+        && isStringLen(data.email, 3, 254)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidVehicle(data) {
+      let fields = ['type', 'brand', 'model', 'year', 'plate', 'currentKm',
+                    'transmission', 'fipeCode', 'fipeValue', 'fipeReference',
+                    'createdAt'];
+      return hasValidKeys(data, fields, fields)
+        && data.type in ['carro', 'moto']
+        && isStringLen(data.brand, 1, 100)
+        && isStringLen(data.model, 1, 100)
+        && isStringLen(data.year, 0, 20)
+        && isStringLen(data.plate, 0, 20)
+        && isNumberInRange(data.currentKm, 0, 10000000)
+        && data.transmission in ['Manual', 'Automático', '']
+        && isStringLen(data.fipeCode, 0, 100)
+        && isStringLen(data.fipeValue, 0, 100)
+        && isStringLen(data.fipeReference, 0, 100)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidMaintenance(data) {
+      return hasValidKeys(data,
+               ['vehicleId', 'category', 'date', 'km', 'cost', 'createdAt'],
+               ['vehicleId', 'category', 'date', 'km', 'cost', 'notes',
+                'nextKm', 'nextDate', 'createdAt'])
+        && isStringLen(data.vehicleId, 1, 128)
+        && isStringLen(data.category, 1, 100)
+        && data.date is timestamp
+        && isNumberInRange(data.km, 0, 10000000)
+        && isNumberInRange(data.cost, 0, 100000000)
+        && isStringLen(data.get('notes', ''), 0, 2000)
+        && (data.get('nextKm', null) == null
+              || isNumberInRange(data.nextKm, 0, 10000000))
+        && (data.get('nextDate', null) == null || data.nextDate is timestamp)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFuel(data) {
+      let fields = ['vehicleId', 'date', 'km', 'liters', 'totalPrice', 'createdAt'];
+      return hasValidKeys(data, fields, fields)
+        && isStringLen(data.vehicleId, 1, 128)
+        && data.date is timestamp
+        && isNumberInRange(data.km, 0, 10000000)
+        && isNumberInRange(data.liters, 0, 10000)
+        && isNumberInRange(data.totalPrice, 0, 1000000)
+        && data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      // Only the owner can read their profile (contains email = PII).
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+      allow update: if isOwner(uid) && isValidUser(request.resource.data)
+                    && createdAtUnchanged();
+      allow delete: if isOwner(uid);
+
+      match /vehicles/{vehicleId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidVehicle(request.resource.data);
+        allow update: if isOwner(uid) && isValidVehicle(request.resource.data)
+                      && createdAtUnchanged();
+        allow delete: if isOwner(uid);
+      }
+
+      match /maintenances/{maintenanceId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidMaintenance(request.resource.data);
+        allow update: if isOwner(uid) && isValidMaintenance(request.resource.data)
+                      && createdAtUnchanged();
+        allow delete: if isOwner(uid);
+      }
+
+      match /fuel/{fuelId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && isValidFuel(request.resource.data);
+        allow update: if isOwner(uid) && isValidFuel(request.resource.data)
+                      && createdAtUnchanged();
+        allow delete: if isOwner(uid);
+      }
+    }
+
+    // Anything not matched above is denied by default.
+  }
+}
