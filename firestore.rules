@@ -1,105 +1,31 @@
 rules_version = '2';
 
-// ===============================================================
-// CarCare - Cloud Firestore Security Rules (prototype)
-// ===============================================================
-//
-// Idea geral: TODOS os dados são privados. Só o usuário autenticado
-// cujo uid é igual ao {uid} do caminho pode ler/escrever. Todo o resto
-// é negado por padrão (Firestore nega tudo que não tem "allow").
-//
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-//
-// Document: users/{uid}
-//   - name:      string    (required, 1..100 chars)
-//   - email:     string    (required, 3..254 chars)
-//   - createdAt: timestamp (required, immutable after create)
-//
-// Collection: users/{uid}/vehicles/{vehicleId}
-//   - type:          string    (required, 'carro' | 'moto')
-//   - brand:         string    (required, 1..100 chars)
-//   - model:         string    (required, 1..100 chars)
-//   - year:          string    (required, 0..20 chars)
-//   - plate:         string    (required, 0..20 chars)
-//   - currentKm:     number    (required, int or double, 0..10,000,000)
-//   - transmission:  string    (required, 'Manual' | 'Automático' | '')
-//   - fipeCode:      string    (required, 0..100 chars)
-//   - fipeValue:     string    (required, 0..100 chars)
-//   - fipeReference: string    (required, 0..100 chars)
-//   - createdAt:     timestamp (required, immutable after create)
-//
-// Collection: users/{uid}/maintenances/{id}
-//   - vehicleId: string    (required, 1..128 chars) - id of a vehicle of the same user
-//   - category:  string    (required, 1..100 chars)
-//   - date:      timestamp (required)
-//   - km:        number    (required, 0..10,000,000)
-//   - cost:      number    (required, 0..100,000,000)
-//   - notes:     string    (optional, 0..2000 chars)
-//   - nextKm:    number | null    (optional)
-//   - nextDate:  timestamp | null (optional)
-//   - createdAt: timestamp (required, immutable after create)
-//
-// Collection: users/{uid}/fuel/{id}
-//   - vehicleId:  string    (required, 1..128 chars)
-//   - date:       timestamp (required)
-//   - km:         number    (required, 0..10,000,000)
-//   - liters:     number    (required, 0..10,000)
-//   - totalPrice: number    (required, 0..1,000,000)
-//   - createdAt:  timestamp (required, immutable after create)
-//
-// Notes:
-//   - "number" accepts both int and double.
-//   - Because everything lives under users/{uid}, a user can never point
-//     a vehicleId at another user's vehicle (it only resolves inside
-//     their own subcollection).
-//   - On UPDATE, createdAt must keep its original value (either omit it
-//     when using update(), or send back the same value). Re-sending
-//     FieldValue.serverTimestamp() for createdAt on update is denied.
-//
-// ===============================================================
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-
-    // User is logged in.
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Logged-in user is the owner of the path {uid}.
     function isOwner(uid) {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // Document has all required fields and nothing else.
     function hasValidKeys(data, required, allowed) {
       return data.keys().hasAll(required) && data.keys().hasOnly(allowed);
     }
 
-    // String with length between min and max.
     function isStringLen(value, min, max) {
       return value is string && value.size() >= min && value.size() <= max;
     }
 
-    // Number (int or double) between min and max.
     function isNumberInRange(value, min, max) {
       return value is number && value >= min && value <= max;
     }
 
-    // createdAt cannot change after the document is created.
     function createdAtUnchanged() {
       return request.resource.data.createdAt == resource.data.createdAt;
     }
-
-    // ===============================================================
-    // Domain Validators (used in BOTH create and update)
-    // ===============================================================
 
     function isValidUser(data) {
       return hasValidKeys(data,
@@ -156,12 +82,7 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
     match /users/{uid} {
-      // Only the owner can read their profile (contains email = PII).
       allow read: if isOwner(uid);
       allow create: if isOwner(uid) && isValidUser(request.resource.data);
       allow update: if isOwner(uid) && isValidUser(request.resource.data)
@@ -192,7 +113,5 @@ service cloud.firestore {
         allow delete: if isOwner(uid);
       }
     }
-
-    // Anything not matched above is denied by default.
   }
 }
