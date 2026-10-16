@@ -605,7 +605,7 @@ class _ColumnChart extends StatelessWidget {
     const double chartHeight = 160;
 
     return SizedBox(
-      height: chartHeight + 40,
+      height: chartHeight + 50,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final barWidth = math.max(16.0, (constraints.maxWidth / bars.length) - 8);
@@ -617,12 +617,8 @@ class _ColumnChart extends StatelessWidget {
               final bar = bars[index];
               final isSelected = selectedIndex == index;
               final double heightRatio = maxTotal > 0 ? (bar.total / maxTotal).clamp(0.0, 1.0) : 0;
-              final double fuelRatio = bar.total > 0 ? bar.fuelCost / bar.total : 0;
-              final double maintRatio = bar.total > 0 ? bar.maintenanceCost / bar.total : 0;
 
               final totalHeight = chartHeight * heightRatio;
-              final fuelHeight = totalHeight * fuelRatio;
-              final maintHeight = totalHeight * maintRatio;
 
               return InkWell(
                 onTap: () => onSelectBar(index),
@@ -649,7 +645,8 @@ class _ColumnChart extends StatelessWidget {
                       // Barra
                       Container(
                         width: barWidth,
-                        height: math.max(4.0, totalHeight),
+                        height: math.max(6.0, totalHeight),
+                        clipBehavior: Clip.antiAlias,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(6),
                           border: isSelected
@@ -665,31 +662,25 @@ class _ColumnChart extends StatelessWidget {
                                 ]
                               : null,
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(isSelected ? 4 : 6),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              // Manutenção (Azul) no topo
-                              if (maintHeight > 0)
-                                Container(
-                                  height: maintHeight,
-                                  color: Colors.blue[400],
-                                ),
-                              // Combustível (Dourado) na base
-                              if (fuelHeight > 0)
-                                Container(
-                                  height: fuelHeight,
-                                  color: AppColors.goldenPollen,
-                                ),
-                              if (bar.total == 0)
-                                Container(
-                                  height: 4,
-                                  color: Colors.grey.withValues(alpha: 0.2),
-                                ),
-                            ],
-                          ),
-                        ),
+                        child: bar.total <= 0
+                            ? Container(color: Colors.grey.withValues(alpha: 0.2))
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  // Manutenção (Azul) no topo
+                                  if (bar.maintenanceCost > 0)
+                                    Expanded(
+                                      flex: math.max(1, (bar.maintenanceCost * 100).toInt()),
+                                      child: Container(color: Colors.blue[400]),
+                                    ),
+                                  // Combustível (Dourado) na base
+                                  if (bar.fuelCost > 0)
+                                    Expanded(
+                                      flex: math.max(1, (bar.fuelCost * 100).toInt()),
+                                      child: Container(color: AppColors.goldenPollen),
+                                    ),
+                                ],
+                              ),
                       ),
                       const SizedBox(height: 8),
 
