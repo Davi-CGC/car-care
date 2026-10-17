@@ -52,7 +52,7 @@ class FuelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = record;
-    final stationPart = r.gasStation.trim().isNotEmpty ? '📍 ${r.gasStation} • ' : '';
+    final stationPart = r.gasStation.trim().isNotEmpty ? ' ${r.gasStation} • ' : '';
     final tankTag = r.isFullTank ? 'Tanque Cheio' : 'Parcial';
 
     return Card(

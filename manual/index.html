@@ -78,19 +78,19 @@
           <h2>CarCare — Manual Técnico do Desenvolvedor</h2>
           <p>Documentação arquitetural, operacional e guia prático para desenvolvedores manterem, publicarem e expandirem o ecossistema CarCare.</p>
         </div>
-        <p>O <strong>CarCare</strong> é um produto de software construído com Flutter e Dart, desenhado para gerenciamento preventivo e controle de custos de <strong>carros</strong> e <strong>motocicletas</strong>. O sistema integra persistência em nuvem em tempo real com o <strong>Google Firebase</strong> (Authentication e Cloud Firestore), consulta em tempo real à <strong>API da Tabela FIPE</strong>, relatórios analíticos em gráficos de colunas, diário de bordo e alertas municipais de rodízio veicular.</p>
+        <p>O <strong>CarCare</strong> é um produto de software construído com Flutter e Dart, desenhado para gerenciamento preventivo e controle de custos de <strong>carros</strong>, <strong>motocicletas</strong> e <strong>caminhões</strong>. O sistema integra persistência em nuvem em tempo real com o <strong>Google Firebase</strong> (Authentication e Cloud Firestore), consulta em tempo real à <strong>API da Tabela FIPE</strong> (para os 3 modais de veículos), radar geolocalizado de serviços automotivos via <strong>Google Maps</strong>, gestão de documentos (IPVA, Licenciamento Detran e Seguro com guincho 24h), rodízio de pneus, rotina de abastecimento, relatórios analíticos em gráficos de colunas, diário de bordo e alertas municipais de rodízio veicular (incluindo regras de ZMRC para caminhões).</p>
       </section>
 
       <!-- 2. Objetivo e Público-Alvo -->
       <section id="objetivo">
         <h2>2. Objetivo e Público-Alvo</h2>
         <h3>Objetivo do Software</h3>
-        <p>Eliminar o esquecimento de manutenções preventivas, monitorar o consumo real de combustível por quilômetro rodado (km/l ou km/m³ no GNV), centralizar os custos operacionais do veículo e emitir alertas inteligentes conforme o odômetro avança em relação aos limites de troca de óleo, freios, filtros, transmissão e pneus.</p>
+        <p>Eliminar o esquecimento de manutenções preventivas, monitorar o consumo real de combustível por quilômetro rodado (km/l ou km/m³ no GNV), centralizar os custos operacionais do veículo e emitir alertas inteligentes conforme o odômetro avança em relação aos limites de troca de óleo, freios, filtros, transmissão, documentos e pneus.</p>
         <h3>Público-Alvo</h3>
         <ul>
-          <li>Proprietários individuais de carros e motos que desejam controle preventivo de custos.</li>
-          <li>Motoristas de aplicativo e entregadores que necessitam de acompanhamento rigoroso de consumo e trocas periódicas.</li>
-          <li>Entusiastas e gestores de veículos que buscam histórico unificado e valorização do patrimônio.</li>
+          <li>Proprietários individuais de carros, motos e caminhões que desejam controle preventivo de custos.</li>
+          <li>Motoristas de aplicativo, caminhoneiros autônomos e entregadores que necessitam de acompanhamento rigoroso de consumo, rotinas de posto e trocas periódicas.</li>
+          <li>Entusiastas e gestores de pequenas frotas que buscam histórico unificado, controle de impostos e valorização do patrimônio.</li>
         </ul>
       </section>
 
@@ -112,7 +112,11 @@
           </div>
           <div class="card">
             <h4>API Tabela FIPE</h4>
-            <p>Integração REST com a API pública FIPE (Parallelum) para marcas, modelos, anos e cotação de mercado atualizada.</p>
+            <p>Integração REST com a API pública FIPE (Parallelum) para carros, motos e caminhões com cotações atualizadas.</p>
+          </div>
+          <div class="card">
+            <h4>Google Maps &amp; URL Launcher</h4>
+            <p>Busca geolocalizada de postos, mecânicas, borracharias e discagem rápida 24h para guincho/seguradora.</p>
           </div>
         </div>
       </section>
@@ -205,19 +209,21 @@ cd carcare</code></pre>
 │   ├── repositories/         # Operações CRUD no Cloud Firestore (veículos, gastos, etc.)
 │   ├── screens/
 │   │   ├── auth/             # Login, cadastro e AuthGate
-│   │   ├── home/             # Tela principal e abas (Início, Veículos, Manutenções, Abastecimentos)
-│   │   ├── manual/           # Central de Dúvidas Frequentes (FAQ)
+│   │   ├── fuel/             # Histórico de postos e consulta de preços praticados
+│   │   ├── home/             # Tela principal e 5 abas integradas
+│   │   ├── manual/           # Central de Dúvidas Frequentes (FAQ categorizado com busca)
 │   │   ├── reports/          # Gráficos em colunas (Semana, Mês, Ano) e consumo
-│   │   └── vehicle/          # Diário de Bordo / Log unificado do veículo
-│   ├── services/             # Autenticação Firebase e API FIPE
+│   │   ├── services/         # Radar de Serviços Próximos (Google Maps & rotas)
+│   │   └── vehicle/          # Diário de Bordo e Lembretes (IPVA, Licenciamento, Seguro, Pneus)
+│   ├── services/             # Autenticação Firebase e API FIPE (carros, motos, caminhões)
 │   ├── theme/                # Paleta oficial (Pólen de Ouro, Obsidian, Branco Gelo)
-│   ├── utils/                # Cálculos, alertas de rodízio, catálogo de manutenções
-│   └── widgets/              # Termômetro de consumo, cards, botões, campos e logo
-├── manual/                   # Manual técnico HTML/CSS completo
-├── test/                     # Testes automatizados (widget_test.dart)
+│   ├── utils/                # Cálculos, alertas de rodízio (ZMRC), documentos & pneus
+│   └── widgets/              # Rotina de abastecimento, termômetro, cards e logo
+├── manual/                   # Manual técnico HTML/CSS completo e FAQ web
+├── test/                     # Testes automatizados (calculations_test.dart, widget_test.dart)
 ├── firestore.rules           # Regras de segurança em nuvem do Firestore
 ├── run.bat / run.ps1         # Scripts de inicialização rápida sem travas no Windows
-└── pubspec.yaml              # Dependências e metadados do projeto</code></pre>
+└── pubspec.yaml              # Dependências (url_launcher, flutterfire, etc.) e metadados</code></pre>
       </section>
 
       <!-- 9. Estrutura do Banco de Dados -->
@@ -250,8 +256,8 @@ cd carcare</code></pre>
             </tr>
             <tr>
               <td><code>users/{uid}/fuel/{id}</code></td>
-              <td><code>vehicleId, fuelType ('Gasolina'|'Etanol'|'Diesel'|'GNV'), date, km, liters, totalPrice, isFullTank (bool), gasStation (string), createdAt</code></td>
-              <td>Abastecimentos completos com posto, tanque cheio/parcial, calculadora e rotina.</td>
+              <td><code>vehicleId, fuelType ('Gasolina'|'Etanol'|'Diesel'|'GNV'), date, km, liters, pricePerLiter, totalPrice, isFullTank (bool), gasStation (string), createdAt</code></td>
+              <td>Abastecimentos completos com posto, preço unitário, tanque cheio/parcial, calculadora e rotina.</td>
             </tr>
           </tbody>
         </table>
@@ -377,7 +383,154 @@ service cloud.firestore {
       <!-- 19. Central de Dúvidas (FAQ) -->
       <section id="central-faq">
         <h2>19. Central de Dúvidas Frequentes (FAQ)</h2>
-        <p>Acessível pelo botão flutuante amarelo com interrogação <code>?</code> no canto inferior esquerdo da tela inicial. Traz respostas rápidas para dúvidas comuns dos usuários organizadas com busca instantânea e tags de categorias.</p>
+        <p>Acessível pelo botão flutuante amarelo com interrogação <code>?</code> no canto inferior esquerdo da tela inicial do CarCare. Traz respostas rápidas organizadas com busca instantânea e filtros por categoria. Abaixo está a base de conhecimento completa:</p>
+
+        <!-- 1. Veículos & Rodízio -->
+        <div class="faq-category">🚗 Veículos &amp; Rodízio</div>
+
+        <details class="faq-item">
+          <summary>Como cadastrar meu carro, moto ou caminhão?</summary>
+          <div class="faq-answer">Na aba "Veículos" ou no botão flutuante da tela inicial, toque em "Novo Veículo". Selecione se o veículo é um <strong>Carro</strong>, <strong>Moto</strong> ou <strong>Caminhão</strong>, digite o nome e a placa. Você também pode tocar em "Consultar Tabela FIPE" no card do veículo para puxar automaticamente a marca, modelo, ano oficial e o valor médio de mercado!</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como o app avisa o dia do meu rodízio veicular?</summary>
+          <div class="faq-answer">O CarCare lê o último número da placa informada (padrão antigo ou Mercosul) e calcula o dia da restrição de trânsito (ex: finais 1 e 2 na segunda-feira, 3 e 4 na terça, etc.). Se hoje for o dia do rodízio do seu carro, um banner amarelo em destaque surge no topo da tela inicial. Motocicletas são identificadas automaticamente como isentas de rodízio.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como funciona o rodízio para caminhões (ZMRC)?</summary>
+          <div class="faq-answer">Para caminhões, o aplicativo adota as regras oficiais da Zona de Máxima Restrição de Circulação (ZMRC). A restrição para caminhões vigora em dias úteis das 05h00 às 21h00 conforme o final da placa. O banner e o card do veículo alertam o motorista sobre esse horário estendido.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como atualizar o valor do veículo pela Tabela FIPE?</summary>
+          <div class="faq-answer">Na aba de Veículos, toque sobre o seu carro, moto ou caminhão e clique em "Consultar" no campo Tabela FIPE. Selecione a Marca, Modelo e Ano. O aplicativo busca diretamente na API oficial da FIPE e atualiza o valor médio de mercado e o código de referência do veículo.</div>
+        </details>
+
+        <!-- 2. Combustível & Consumo -->
+        <div class="faq-category">⛽ Combustível &amp; Consumo</div>
+
+        <details class="faq-item">
+          <summary>Como funciona o cálculo de quilometragem e consumo?</summary>
+          <div class="faq-answer">Ao cadastrar um abastecimento, o app exibe a quilometragem anterior registrada. Ao digitar o novo odômetro e os litros abastecidos, o app calcula na hora a distância percorrida e o rendimento do trecho (km/l ou km/m³). Ao salvar, a quilometragem do veículo no banco é atualizada automaticamente!</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Posso abastecer com Etanol, Diesel ou GNV?</summary>
+          <div class="faq-answer">Sim! O formulário de abastecimento permite escolher entre Gasolina, Etanol, Diesel e GNV. Ao selecionar GNV, o campo de volume muda automaticamente para Metros Cúbicos (m³) e o consumo é calculado em km/m³.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Para que serve marcar a opção "Tanque cheio até o automático"?</summary>
+          <div class="faq-answer">Abastecer com "tanque cheio" é a forma padrão da engenharia automotiva para saber o consumo exato do motor. Quando você marca que o tanque foi completado, o app calcula a média exata de km/l entre dois tanques cheios. Se foi um abastecimento parcial (ex: colocou só R$ 50), deixe a chave desmarcada para não distorcer sua média.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como funciona a calculadora automática no abastecimento?</summary>
+          <div class="faq-answer">No formulário de abastecimento, os campos "Preço por Litro", "Volume (Litros)" e "Valor Total Pago" estão interligados em tempo real:
+• Digite o Preço/L e os Litros ➔ O Total Pago é calculado na hora.
+• Digite o Preço/L e o Total Pago ➔ A quantidade de Litros é calculada na hora.
+• Digite os Litros e o Total Pago ➔ O Preço por Litro é calculado na hora.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>O que é o card "Rotina de Abastecimento"?</summary>
+          <div class="faq-answer">É um painel estatístico inteligente na aba de Abastecimentos que analisa o seu padrão de uso:
+• <strong>Distância entre abastecimentos:</strong> quantos km você roda em média antes de parar no posto.
+• <strong>Frequência:</strong> a cada quantos dias você costuma abastecer.
+• <strong>Autonomia estimada:</strong> projeção de quantos km seu tanque cheio rende.
+• <strong>Projeção mensal:</strong> estimativa de quanto você gastará de combustível no mês.
+• <strong>Barra inferior:</strong> percentual de abastecimentos feitos com tanque completo.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>O que significa o Termômetro de Consumo?</summary>
+          <div class="faq-answer">O termômetro visual indica se o consumo médio do veículo está eficiente:
+• <strong>Verde (Muito Econômico):</strong> Alta autonomia por litro/m³.
+• <strong>Amarelo (Normal / Moderado):</strong> Consumo padrão esperado para o combustível e tipo de veículo.
+• <strong>Vermelho (Alto Consumo):</strong> Indica consumo elevado. Vale a pena verificar calibragem dos pneus, filtro de ar, velas e bicos injetores.</div>
+        </details>
+
+        <!-- 3. Serviços & Postos -->
+        <div class="faq-category">📍 Serviços &amp; Postos</div>
+
+        <details class="faq-item">
+          <summary>Como encontrar postos, mecânicos e borracharias próximos?</summary>
+          <div class="faq-answer">No topo do app (na barra superior), toque no ícone de <strong>Bússola</strong>. O painel "Radar de Serviços Próximos" permite encontrar com 1 toque no Google Maps: Postos de Combustível, Oficinas Mecânicas, Borracharias 24h, Autoelétricas, Lava-rápidos e Auto Socorro / Guincho na sua região atual.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>O que é o Histórico de Postos Frequentados?</summary>
+          <div class="faq-answer">Na aba "Abastecimentos", toque no botão "Histórico de Postos Frequentados". Nele você visualiza todos os postos onde já abasteceu, quantidade de visitas, total gasto em reais, volume em litros e os preços históricos que você pagou por Gasolina, Etanol, Diesel ou GNV, além de um botão para abrir rota no Google Maps!</div>
+        </details>
+
+        <!-- 4. Documentos & Pneus -->
+        <div class="faq-category">📄 Documentos &amp; Pneus</div>
+
+        <details class="faq-item">
+          <summary>Como funciona o controle e lembrete de IPVA?</summary>
+          <div class="faq-answer">Ao abrir os detalhes do veículo, toque em "Lembretes: IPVA, Licenciamento, Seguro &amp; Pneus". O CarCare calcula o mês de vencimento oficial do IPVA pelo final da placa, estima o valor com base na alíquota do estado sobre a Tabela FIPE (4% carros, 2% motos, 1.5% caminhões) e permite marcar o imposto como Pendente, Pago ou Isento.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como funciona o lembrete de Licenciamento Anual (Detran)?</summary>
+          <div class="faq-answer">O app acompanha o calendário oficial do Detran pelo dígito final da placa (de Julho a Dezembro). Ele avisa se o documento está regular, no mês de vencimento ou em atraso, com botão para confirmar o pagamento anual.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como cadastrar o Seguro e acionar o Guincho 24h rapidamente?</summary>
+          <div class="faq-answer">No modal de Lembretes do veículo, você pode cadastrar a Seguradora, número da Apólice, data de renovação e o telefone de assistência 24h. Quando precisar de um guincho ou socorro, basta tocar no botão de chamada rápida para discar diretamente sem precisar procurar papelada.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como funciona o controle de Rodízio de Pneus?</summary>
+          <div class="faq-answer">O rodízio de pneus prolonga a vida útil dos pneus e melhora a segurança. O CarCare monitora o intervalo padrão de 10.000 km, exibindo uma barra visual de desgaste e a quilometragem restante. Ao fazer o rodízio, basta tocar em "Registrar Rodízio Hoje" para atualizar o odômetro da troca.</div>
+        </details>
+
+        <!-- 5. Manutenções & Alertas -->
+        <div class="faq-category">🔧 Manutenções &amp; Alertas</div>
+
+        <details class="faq-item">
+          <summary>Como funciona a visualização do odômetro anterior no cadastro?</summary>
+          <div class="faq-answer">Sempre que você for cadastrar uma nova manutenção ou abastecimento, o app mostra em destaque a última quilometragem registrada e calcula em tempo real quantos km você rodou desde a última vez, evitando que você digite quilometragens inferiores por engano.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como editar ou corrigir uma manutenção ou abastecimento já salvo?</summary>
+          <div class="faq-answer">Se você confirmou um abastecimento ou manutenção e percebeu que digitou algo errado, basta tocar sobre o item na lista e clicar no botão "Editar". Altere os valores desejados e salve novamente sem perder o histórico.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>O que é o Diário de Bordo (Log do Veículo)?</summary>
+          <div class="faq-answer">O Diário de Bordo é a linha do tempo completa do seu veículo. Nele você vê em ordem cronológica reversa todas as manutenções e abastecimentos, total gasto, evolução do odômetro e a média diária de km rodados.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como funcionam os alertas de revisão preventiva?</summary>
+          <div class="faq-answer">Ao registrar uma manutenção (ex: troca de óleo), ative "Agendar próximo serviço" e defina o próximo km ou data. O aplicativo monitora o avanço do odômetro e avisa na tela inicial quando o serviço estiver próximo ou atrasado.</div>
+        </details>
+
+        <!-- 6. Gastos & Relatórios -->
+        <div class="faq-category">📊 Gastos &amp; Relatórios</div>
+
+        <details class="faq-item">
+          <summary>Como ver os gráficos de gastos por semana, mês e ano?</summary>
+          <div class="faq-answer">Na aba "Relatórios", você encontra gráficos de colunas com filtros por Semana, Mês ou Ano, podendo filtrar entre Carros, Motos e Caminhões. Ao tocar em qualquer coluna, o aplicativo abre o detalhamento exato com tudo o que foi gasto no período!</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>O que é a Média Diária de Distância (km/dia)?</summary>
+          <div class="faq-answer">É um cálculo que divide os quilômetros rodados pela quantidade de dias entre os registros. Essa métrica ajuda a saber o ritmo real de uso do veículo para planejar despesas e próximas trocas de óleo.</div>
+        </details>
+
+        <!-- 7. Conta & Nuvem -->
+        <div class="faq-category">☁️ Conta &amp; Nuvem</div>
+
+        <details class="faq-item">
+          <summary>Meus dados ficam salvos se eu trocar de aparelho?</summary>
+          <div class="faq-answer">Sim! Todos os seus dados ficam salvos com segurança na nuvem pelo Google Cloud Firestore. Basta fazer login com o mesmo e-mail e senha em qualquer celular ou computador para acessar seus veículos.</div>
+        </details>
       </section>
 
       <!-- 20. Como Alterar Cores -->
