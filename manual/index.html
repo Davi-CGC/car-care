@@ -240,18 +240,18 @@ cd carcare</code></pre>
             </tr>
             <tr>
               <td><code>users/{uid}/vehicles/{id}</code></td>
-              <td><code>type ('carro'|'moto'), brand, model, year, plate, currentKm, transmission, fipeCode, fipeValue, fipeReference, createdAt</code></td>
-              <td>Carros e motocicletas do usuário.</td>
+              <td><code>type ('carro'|'moto'|'caminhao'), brand, model, year, plate, currentKm, transmission, tankCapacity, ipvaDueMonth, ipvaPaid, ipvaAmount, licensingPaid, insuranceCompany, insurancePolicy, insurancePhone, insuranceExpiryDate, lastTireRotationKm, tireRotationIntervalKm, fipeCode, fipeValue, fipeReference, createdAt</code></td>
+              <td>Carros, motocicletas e caminhões do usuário com controle de documentos e pneus.</td>
             </tr>
             <tr>
               <td><code>users/{uid}/maintenances/{id}</code></td>
               <td><code>vehicleId, category, date, km, cost, notes, nextKm, nextDate, createdAt</code></td>
-              <td>Registros de manutenção com projeção futura de revisão.</td>
+              <td>Registros de manutenção com projeção futura de revisão e odômetro anterior visível.</td>
             </tr>
             <tr>
               <td><code>users/{uid}/fuel/{id}</code></td>
-              <td><code>vehicleId, fuelType ('Gasolina'|'Etanol'|'Diesel'|'GNV'), date, km, liters, totalPrice, createdAt</code></td>
-              <td>Abastecimentos com suporte a volume em Litros ou m³ (GNV).</td>
+              <td><code>vehicleId, fuelType ('Gasolina'|'Etanol'|'Diesel'|'GNV'), date, km, liters, totalPrice, isFullTank (bool), gasStation (string), createdAt</code></td>
+              <td>Abastecimentos completos com posto, tanque cheio/parcial, calculadora e rotina.</td>
             </tr>
           </tbody>
         </table>
@@ -289,17 +289,20 @@ service cloud.firestore {
         <h2>12. Tela Principal (Home) e as 5 Abas</h2>
         <p>O aplicativo organiza toda a experiência em 5 abas integradas:</p>
         <ol>
-          <li><strong>Início (Visão Geral):</strong> cartões de resumo (veículos, gastos no mês, alertas de serviços ativos, consumo médio geral), termômetro visual e <strong>banner de alerta se hoje for dia de rodízio</strong> de algum carro.</li>
-          <li><strong>Veículos:</strong> listagem completa com odômetro, placa, valor FIPE, chip de rodízio e botão para acessar o Diário de Bordo.</li>
-          <li><strong>Manutenções:</strong> histórico de revisões com filtro por veículo, badge de status e botão para <strong>Editar</strong> ou Excluir.</li>
-          <li><strong>Abastecimentos:</strong> histórico com tipo de combustível, preço pago, volume abastecido (L ou m³) e botão para <strong>Editar</strong> ou Excluir.</li>
-          <li><strong>Relatórios:</strong> gráficos de colunas interativos por Semana, Mês ou Ano, detalhamento clicável de custos e tabela de consumo por veículo.</li>
+          <li><strong>Início (Visão Geral):</strong> cartões de resumo (veículos, gastos no mês, alertas de serviços ativos, consumo médio geral, <strong>média diária de distância</strong>), termômetro visual, <strong>radar de serviços automotivos próximos via Google Maps</strong> e <strong>banner de alerta se hoje for dia de rodízio</strong>.</li>
+          <li><strong>Veículos:</strong> listagem de carros, motos e <strong>caminhões</strong> com odômetro, placa, valor FIPE, chip de rodízio, botão de <strong>Lembretes &amp; Documentos (IPVA, Licenciamento, Seguro, Pneus)</strong> e acesso ao Diário de Bordo.</li>
+          <li><strong>Manutenções:</strong> histórico de revisões com odômetro anterior visível, filtro por veículo, badge de status e botão para <strong>Editar</strong> ou Excluir.</li>
+          <li><strong>Abastecimentos:</strong> histórico com <strong>Card de Rotina de Abastecimento</strong>, botão para o <strong>Histórico de Postos Frequentados</strong>, calculadora automática de 3 campos, opção de <strong>Tanque Cheio vs Parcial</strong> e botão para <strong>Editar</strong> ou Excluir.</li>
+          <li><strong>Relatórios:</strong> gráficos de colunas interativos por Semana, Mês ou Ano, filtro por Carros, Motos e Caminhões, detalhamento clicável de custos e consumo médio com média diária de km.</li>
         </ol>
       </section>
 
       <!-- 13. Veículos, FIPE & Rodízio -->
       <section id="crud-veiculos">
-        <h2>13. Gestão de Veículos, Tabela FIPE &amp; Rodízio Municipal</h2>
+        <h2>13. Gestão de Veículos, Caminhões, FIPE &amp; Rodízio Municipal</h2>
+        <h3>Suporte Completo a Caminhões</h3>
+        <p>O sistema suporta oficialmente <strong>Carros</strong>, <strong>Motos</strong> e <strong>Caminhões</strong>. Para caminhões, o CarCare consulta a Tabela FIPE no endpoint <code>/caminhoes</code>, adota regras de rodízio ZMRC (Zona de Máxima Restrição de Circulação em SP das 05h às 21h em dias úteis) e calibra o termômetro de consumo para médias de diesel pesado (2.0 a 4.5 km/l).</p>
+
         <h3>Alerta Automático de Rodízio por Placa</h3>
         <p>O utilitário <code>RodizioHelper</code> lê o último dígito numérico da placa (funciona tanto no padrão tradicional <code>ABC-1234</code> quanto no Mercosul <code>ABC1D23</code>):</p>
         <ul>
@@ -309,24 +312,36 @@ service cloud.firestore {
           <li><strong>Finais 7 e 8:</strong> Quinta-feira</li>
           <li><strong>Finais 9 e 0:</strong> Sexta-feira</li>
           <li><strong>Motocicletas:</strong> Isentas de rodízio municipal.</li>
+          <li><strong>Caminhões:</strong> Sujeitos ao rodízio de caminhões/ZMRC (05h às 21h).</li>
         </ul>
-        <p>Ao cadastrar ou editar o veículo, o app mostra o dia do rodízio em tempo real enquanto a placa é digitada. Se hoje for o dia do rodízio, um banner amarelo de aviso fica ativo na tela inicial.</p>
+
+        <h3>Lembretes de IPVA, Licenciamento, Seguro &amp; Rodízio de Pneus</h3>
+        <p>Acessível em cada veículo pelo botão <strong>Lembretes: IPVA, Licenciamento, Seguro &amp; Pneus</strong>:</p>
+        <ul>
+          <li><strong>IPVA:</strong> Mês de vencimento pelo final da placa, valor estimado com base na Tabela FIPE (4% carros, 2% motos, 1.5% caminhões) e botão de marcar como pago.</li>
+          <li><strong>Licenciamento:</strong> Calendário oficial do Detran por final de placa com alertas de mês de vencimento.</li>
+          <li><strong>Seguro do Veículo:</strong> Nome da seguradora, número de apólice, botão com ligação direta para assistência 24h/guincho e contagem regressiva de renovação.</li>
+          <li><strong>Rodízio de Pneus:</strong> Quilometragem do último rodízio, intervalo recomendado (10.000 km), km restantes e barra de progresso visual de desgaste com botão de registro em 1 clique.</li>
+        </ul>
       </section>
 
       <!-- 14. Manutenções & Edição -->
       <section id="crud-manutencoes">
-        <h2>14. Manutenções, Alertas Futuros e Edição</h2>
+        <h2>14. Manutenções, Alertas Futuros e Odômetro Anterior Visível</h2>
+        <p>No formulário de manutenção, o motorista visualiza em destaque o <strong>último odômetro registrado</strong>, permitindo copiar o valor com 1 toque ou verificar quantos quilômetros foram rodados desde o serviço anterior.</p>
         <p>Ao tocar em qualquer manutenção registrada, o usuário pode clicar no botão <strong>"Editar"</strong> para retificar custos, data, quilometragem ou observações caso tenha confirmado com algum erro.</p>
-        <p>O aplicativo projeta a próxima revisão por quilometragem ou data limite. Quando a quilometragem do veículo se aproxima (menos de 500 km) ou a data vence, badges amarelas ou vermelhas de alerta são acionadas.</p>
       </section>
 
-      <!-- 15. Abastecimento, GNV & Odômetro -->
+      <!-- 15. Abastecimento, Calculadora, Tanque Cheio & Rotina -->
       <section id="crud-abastecimentos">
-        <h2>15. Abastecimento, Múltiplos Combustíveis &amp; Odômetro Automático</h2>
+        <h2>15. Abastecimento, Calculadora Dinâmica, Tanque Cheio &amp; Rotina</h2>
         <ul>
-          <li><strong>Múltiplos Combustíveis:</strong> suporte nativo para <em>Gasolina, Etanol, Diesel e GNV (Gás Natural Veicular)</em>. Ao selecionar GNV, o aplicativo converte as unidades para Metros Cúbicos (m³) e km/m³.</li>
-          <li><strong>Atualização Automática de Odômetro:</strong> ao lançar um abastecimento informando a quilometragem atual, o aplicativo calcula na hora o consumo do trecho percorrido e <strong>atualiza automaticamente o odômetro do veículo no banco de dados</strong> ao salvar.</li>
-          <li><strong>Edição de Abastecimento:</strong> toque sobre qualquer abastecimento na lista para abrir os detalhes e selecionar <strong>"Editar"</strong> para corrigir valores ou volumes.</li>
+          <li><strong>Calculadora Automática de 3 Campos:</strong> Conecta <em>Preço por Litro/m³</em>, <em>Volume (Litros ou m³)</em> e <em>Valor Total (R$)</em>. Ao preencher 2 campos quaisquer, o 3º calcula instantaneamente sem necessidade de contas manuais.</li>
+          <li><strong>Odômetro Anterior em Destaque:</strong> Exibe o último odômetro registrado e mostra um badge verde de quantos quilômetros foram rodados neste abastecimento.</li>
+          <li><strong>Tanque Cheio vs Parcial:</strong> Chave seletora que define se o tanque foi completado. Abastecimentos com tanque cheio utilizam o método científico oficial para calcular o consumo exato daquele ciclo (km rodados ÷ litros consumidos).</li>
+          <li><strong>Histórico de Postos Frequentados:</strong> Registra a bandeira/nome do posto (Shell, Ipiranga, BR, etc.), histórico de preços pagos e rota no Google Maps com 1 clique.</li>
+          <li><strong>Card de Rotina de Abastecimento:</strong> Painel estatístico completo exibindo <em>distância média entre abastecimentos</em>, <em>frequência em dias</em>, <em>autonomia estimada com tanque cheio</em>, <em>projeção mensal de gastos</em> e a proporção de abastecimentos com tanque cheio.</li>
+          <li><strong>Radar de Serviços Próximos (Google Maps):</strong> Botão de bússola no topo do app que abre buscas automáticas por postos de combustível, mecânicas, borracharias, autoelétricas e guinchos 24h na localização do usuário.</li>
         </ul>
       </section>
 

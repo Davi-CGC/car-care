@@ -28,9 +28,13 @@ import '../../widgets/record_tiles.dart';
 import '../../widgets/summary_card.dart';
 import '../../widgets/vehicle_card.dart';
 import '../../utils/rodizio_helper.dart';
+import '../../widgets/fuel_routine_card.dart';
+import '../fuel/gas_stations_history_sheet.dart';
 import '../manual/manual_screen.dart';
 import '../reports/reports_tab.dart';
+import '../services/nearby_services_sheet.dart';
 import '../vehicle/vehicle_log_screen.dart';
+import '../vehicle/vehicle_reminders_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -85,6 +89,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     actions: [
+                      IconButton(
+                        icon: const Icon(Icons.explore_outlined),
+                        tooltip: 'Serviços Próximos (Google Maps)',
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (_) => NearbyServicesSheet(fuels: fuels),
+                          );
+                        },
+                      ),
                       IconButton(
                         icon: Icon(
                           themeController.isDark
@@ -257,12 +272,12 @@ class _HomeScreenState extends State<HomeScreen> {
           appSlogan,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
         ),
-        if (vehicles.any((v) => v.isCar && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, isCar: true).isToday)) ...[
+        if (vehicles.any((v) => !v.isMotorcycle && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, type: v.type).isToday)) ...[
           const SizedBox(height: 14),
           ...vehicles
-              .where((v) => v.isCar && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, isCar: true).isToday)
+              .where((v) => !v.isMotorcycle && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, type: v.type).isToday)
               .map((rv) {
-            final rInfo = RodizioHelper.getInfo(rv.plate, isCar: true);
+            final rInfo = RodizioHelper.getInfo(rv.plate, type: rv.type);
             return Card(
               color: AppColors.warning.withValues(alpha: 0.15),
               shape: RoundedRectangleBorder(
@@ -311,6 +326,15 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'Consumo médio',
               value: avgConsumption != null ? '${formatNumber(avgConsumption, 1)} km/l' : '--',
             ),
+            Builder(builder: (_) {
+              final dailyKm = Calculations.dailyAverageDistance(fuels);
+              if (dailyKm <= 0) return const SizedBox.shrink();
+              return SummaryCard(
+                icon: Icons.route,
+                label: 'Média diária',
+                value: '${formatNumber(dailyKm, 1)} km/dia',
+              );
+            }),
           ],
         ),
         if (avgConsumption != null) ...[
@@ -319,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (_) {
               final eval = Calculations.evaluateConsumption(
                 avgConsumption,
-                isCar: vehicles.isEmpty ? true : vehicles.first.isCar,
+                vehicleType: vehicles.isEmpty ? VehicleType.carro : vehicles.first.type,
                 fuelType: fuels.isEmpty ? FuelTypes.gasolina : fuels.first.fuelType,
               );
               if (eval == null) return const SizedBox.shrink();
@@ -510,6 +534,21 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
           ],
         ),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.storefront, size: 18),
+            label: const Text('Histórico de Postos Frequentados'),
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => GasStationsHistorySheet(fuels: fuels),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 14),
         if (filtered.isEmpty)
           const EmptyState(
             icon: Icons.local_gas_station_outlined,
@@ -522,12 +561,23 @@ class _HomeScreenState extends State<HomeScreen> {
               final vObj = _selectedVehicleFilter != null
                   ? vehicles.firstWhere((x) => x.id == _selectedVehicleFilter, orElse: () => vehicles.first)
                   : vehicles.first;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: FuelRoutineCard(vehicle: vObj, fuels: filtered),
+              );
+            },
+          ),
+          Builder(
+            builder: (_) {
+              final vObj = _selectedVehicleFilter != null
+                  ? vehicles.firstWhere((x) => x.id == _selectedVehicleFilter, orElse: () => vehicles.first)
+                  : vehicles.first;
               final vConsumption = Calculations.averageConsumption(filtered);
               if (vConsumption == null) return const SizedBox.shrink();
               final lastFuel = filtered.first;
               final eval = Calculations.evaluateConsumption(
                 vConsumption,
-                isCar: vObj.isCar,
+                vehicleType: vObj.type,
                 fuelType: lastFuel.fuelType,
               );
               if (eval == null) return const SizedBox.shrink();
@@ -579,7 +629,9 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   Icon(
-                    vehicle.isCar ? Icons.directions_car : Icons.two_wheeler,
+                    vehicle.isTruck
+                        ? Icons.local_shipping
+                        : (vehicle.isCar ? Icons.directions_car : Icons.two_wheeler),
                     color: AppColors.goldenPollen,
                     size: 32,
                   ),
@@ -614,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   subtitle: Text(vehicle.plate.toUpperCase()),
                 ),
                 Builder(builder: (_) {
-                  final rodizio = RodizioHelper.getInfo(vehicle.plate, isCar: vehicle.isCar);
+                  final rodizio = RodizioHelper.getInfo(vehicle.plate, type: vehicle.type);
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(
@@ -623,9 +675,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     title: const Text('Rodízio Municipal'),
                     subtitle: Text(
-                      vehicle.isCar
-                          ? '${rodizio.dayName} (${rodizio.timeRange})${rodizio.isToday ? ' • ATIVO HOJE!' : ''}'
-                          : 'Isento (Motocicleta)',
+                      vehicle.isMotorcycle
+                          ? 'Isento (Motocicleta)'
+                          : '${rodizio.dayName} (${rodizio.timeRange})${rodizio.isToday ? ' • ATIVO HOJE!' : ''}',
                       style: TextStyle(
                         color: rodizio.isToday ? AppColors.warning : null,
                         fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
@@ -634,13 +686,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }),
               ],
-              if (vehicle.isCar && vehicle.transmission.isNotEmpty)
+              if (!vehicle.isMotorcycle && vehicle.transmission.isNotEmpty)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.settings),
                   title: const Text('Câmbio'),
                   subtitle: Text(vehicle.transmission),
                 ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.local_gas_station),
+                title: const Text('Capacidade do Tanque'),
+                subtitle: Text('${formatNumber(vehicle.effectiveTankCapacity, 0)} Litros'),
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.request_quote),
@@ -659,6 +717,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.amber[800],
+                  foregroundColor: Colors.white,
+                ),
+                icon: const Icon(Icons.assignment),
+                label: const Text('Lembretes: IPVA, Licenciamento, Seguro & Pneus'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (_) => VehicleRemindersSheet(vehicle: vehicle, repo: _vehicleRepo),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
               FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.goldenPollen,
@@ -951,6 +1026,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
   late final TextEditingController _year;
   late final TextEditingController _plate;
   late final TextEditingController _km;
+  late final TextEditingController _tankCapacity;
   String _transmission = 'Manual';
   bool _loading = false;
 
@@ -964,6 +1040,9 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     _year = TextEditingController(text: e?.year ?? '');
     _plate = TextEditingController(text: e?.plate ?? '');
     _km = TextEditingController(text: e != null ? '${e.currentKm}' : '0');
+    _tankCapacity = TextEditingController(
+      text: (e != null && e.tankCapacity > 0) ? '${e.tankCapacity}' : '',
+    );
     _transmission = (e != null && e.transmission.isNotEmpty) ? e.transmission : 'Manual';
     _plate.addListener(() => setState(() {}));
   }
@@ -975,6 +1054,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     _year.dispose();
     _plate.dispose();
     _km.dispose();
+    _tankCapacity.dispose();
     super.dispose();
   }
 
@@ -991,10 +1071,21 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
         year: _year.text.trim(),
         plate: _plate.text.trim().toUpperCase(),
         currentKm: int.tryParse(_km.text.trim()) ?? 0,
-        transmission: _type == VehicleType.carro ? _transmission : '',
+        transmission: _type == VehicleType.moto ? '' : _transmission,
         fipeCode: widget.existing?.fipeCode ?? '',
         fipeValue: widget.existing?.fipeValue ?? '',
         fipeReference: widget.existing?.fipeReference ?? '',
+        tankCapacity: parseNumber(_tankCapacity.text.trim()) ?? 0.0,
+        ipvaDueMonth: widget.existing?.ipvaDueMonth,
+        ipvaPaid: widget.existing?.ipvaPaid ?? false,
+        ipvaAmount: widget.existing?.ipvaAmount,
+        licensingPaid: widget.existing?.licensingPaid ?? false,
+        insuranceCompany: widget.existing?.insuranceCompany ?? '',
+        insurancePolicy: widget.existing?.insurancePolicy ?? '',
+        insurancePhone: widget.existing?.insurancePhone ?? '',
+        insuranceExpiryDate: widget.existing?.insuranceExpiryDate,
+        lastTireRotationKm: widget.existing?.lastTireRotationKm,
+        tireRotationIntervalKm: widget.existing?.tireRotationIntervalKm ?? 10000,
       );
 
       if (widget.existing == null) {
@@ -1036,6 +1127,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                 segments: const [
                   ButtonSegment(value: VehicleType.carro, label: Text('Carro'), icon: Icon(Icons.directions_car)),
                   ButtonSegment(value: VehicleType.moto, label: Text('Moto'), icon: Icon(Icons.two_wheeler)),
+                  ButtonSegment(value: VehicleType.caminhao, label: Text('Caminhão'), icon: Icon(Icons.local_shipping)),
                 ],
                 selected: {_type},
                 onSelectionChanged: (set) => setState(() => _type = set.first),
@@ -1045,15 +1137,19 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                 controller: _brand,
                 label: 'Marca',
                 icon: Icons.business,
-                hint: 'Ex: Volkswagen, Honda',
+                hint: _type == VehicleType.caminhao
+                    ? 'Ex: Scania, Mercedes-Benz, Volvo'
+                    : (_type == VehicleType.moto ? 'Ex: Honda, Yamaha' : 'Ex: Volkswagen, Chevrolet'),
                 validator: (v) => Validators.required(v, 'Marca'),
               ),
               const SizedBox(height: 12),
               AppTextField(
                 controller: _model,
                 label: 'Modelo',
-                icon: Icons.directions_car_filled,
-                hint: 'Ex: Gol 1.0, Civic',
+                icon: _type == VehicleType.caminhao
+                    ? Icons.local_shipping
+                    : (_type == VehicleType.moto ? Icons.two_wheeler : Icons.directions_car_filled),
+                hint: _type == VehicleType.caminhao ? 'Ex: FH 540, Actros' : 'Ex: Gol 1.0, Civic',
                 validator: (v) => Validators.required(v, 'Modelo'),
               ),
               const SizedBox(height: 12),
@@ -1082,6 +1178,14 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               ),
               const SizedBox(height: 12),
               AppTextField(
+                controller: _tankCapacity,
+                label: 'Capacidade do Tanque (Litros - opcional)',
+                icon: Icons.local_gas_station,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                hint: _type == VehicleType.caminhao ? 'Ex: 300' : (_type == VehicleType.moto ? 'Ex: 14' : 'Ex: 50'),
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
                 controller: _plate,
                 label: 'Placa (opcional)',
                 icon: Icons.badge_outlined,
@@ -1089,7 +1193,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               ),
               if (_plate.text.trim().isNotEmpty) ...[
                 Builder(builder: (_) {
-                  final rodizio = RodizioHelper.getInfo(_plate.text.trim(), isCar: _type == VehicleType.carro);
+                  final rodizio = RodizioHelper.getInfo(_plate.text.trim(), type: _type);
                   if (_type == VehicleType.moto) {
                     return const Padding(
                       padding: EdgeInsets.only(top: 6, left: 4),
@@ -1131,7 +1235,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   );
                 }),
               ],
-              if (_type == VehicleType.carro) ...[
+              if (_type != VehicleType.moto) ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _transmission,
@@ -1323,6 +1427,34 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
                 onChanged: _onCategoryChanged,
               ),
               const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.goldenPollen.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.speed, color: AppColors.goldenPollen, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Último odômetro registrado:', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text(formatKm(vehicle.currentKm), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => setState(() => _km.text = '${vehicle.currentKm}'),
+                      child: const Text('Usar'),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -1434,9 +1566,24 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   late String _selectedFuelType;
   late DateTime _date;
   late final TextEditingController _km;
+  late final TextEditingController _pricePerUnit;
   late final TextEditingController _liters;
   late final TextEditingController _price;
+  late final TextEditingController _gasStation;
+
+  bool _isFullTank = true;
+  bool _isCalculating = false;
   bool _loading = false;
+
+  static const List<String> _stationSuggestions = [
+    'Posto Shell',
+    'Posto Ipiranga',
+    'Petrobras BR',
+    'Posto Ale',
+    'Posto Graal',
+    'Posto Rodoil',
+    'Auto Posto Central',
+  ];
 
   @override
   void initState() {
@@ -1445,23 +1592,94 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     _selectedVehicleId = e?.vehicleId ?? widget.vehicles.first.id;
     _selectedFuelType = e?.fuelType ?? FuelTypes.gasolina;
 
-    final vehicle = widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId, orElse: () => widget.vehicles.first);
+    final vehicle = widget.vehicles.firstWhere(
+      (v) => v.id == _selectedVehicleId,
+      orElse: () => widget.vehicles.first,
+    );
 
     _date = e?.date ?? DateTime.now();
     _km = TextEditingController(text: '${e?.km ?? vehicle.currentKm}');
     _liters = TextEditingController(text: e != null ? '${e.liters}' : '');
     _price = TextEditingController(text: e != null ? '${e.totalPrice}' : '');
 
+    final initialPpu = (e != null && e.liters > 0)
+        ? (e.totalPrice / e.liters).toStringAsFixed(2)
+        : '';
+    _pricePerUnit = TextEditingController(text: initialPpu);
+    _gasStation = TextEditingController(text: e?.gasStation ?? '');
+    _isFullTank = e?.isFullTank ?? true;
+
     _km.addListener(() => setState(() {}));
-    _liters.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _km.dispose();
+    _pricePerUnit.dispose();
     _liters.dispose();
     _price.dispose();
+    _gasStation.dispose();
     super.dispose();
+  }
+
+  void _onPricePerUnitChanged(String val) {
+    if (_isCalculating) return;
+    final ppu = parseNumber(val);
+    final total = parseNumber(_price.text.trim());
+    final lts = parseNumber(_liters.text.trim());
+
+    if (ppu != null && ppu > 0) {
+      if (total != null && total > 0) {
+        _isCalculating = true;
+        _liters.text = (total / ppu).toStringAsFixed(2);
+        _isCalculating = false;
+      } else if (lts != null && lts > 0) {
+        _isCalculating = true;
+        _price.text = (ppu * lts).toStringAsFixed(2);
+        _isCalculating = false;
+      }
+    }
+    setState(() {});
+  }
+
+  void _onLitersChanged(String val) {
+    if (_isCalculating) return;
+    final lts = parseNumber(val);
+    final ppu = parseNumber(_pricePerUnit.text.trim());
+    final total = parseNumber(_price.text.trim());
+
+    if (lts != null && lts > 0) {
+      if (ppu != null && ppu > 0) {
+        _isCalculating = true;
+        _price.text = (ppu * lts).toStringAsFixed(2);
+        _isCalculating = false;
+      } else if (total != null && total > 0) {
+        _isCalculating = true;
+        _pricePerUnit.text = (total / lts).toStringAsFixed(2);
+        _isCalculating = false;
+      }
+    }
+    setState(() {});
+  }
+
+  void _onTotalPriceChanged(String val) {
+    if (_isCalculating) return;
+    final total = parseNumber(val);
+    final ppu = parseNumber(_pricePerUnit.text.trim());
+    final lts = parseNumber(_liters.text.trim());
+
+    if (total != null && total > 0) {
+      if (ppu != null && ppu > 0) {
+        _isCalculating = true;
+        _liters.text = (total / ppu).toStringAsFixed(2);
+        _isCalculating = false;
+      } else if (lts != null && lts > 0) {
+        _isCalculating = true;
+        _pricePerUnit.text = (total / lts).toStringAsFixed(2);
+        _isCalculating = false;
+      }
+    }
+    setState(() {});
   }
 
   Future<void> _save() async {
@@ -1481,6 +1699,8 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
         km: kmVal,
         liters: litersVal,
         totalPrice: priceVal,
+        isFullTank: _isFullTank,
+        gasStation: _gasStation.text.trim(),
       );
 
       if (widget.existing == null) {
@@ -1515,6 +1735,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isGnv = _selectedFuelType == FuelTypes.gnv;
+    final unitLabel = isGnv ? 'm³' : 'L';
     final volumeLabel = isGnv ? 'Volume (m³)' : 'Litros (L)';
     final volumeName = isGnv ? 'Volume em m³' : 'Litros';
 
@@ -1575,7 +1796,52 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   if (val != null) setState(() => _selectedFuelType = val);
                 },
               ),
+              const SizedBox(height: 14),
+
+              // CARD DE ÚLTIMO ODÔMETRO REGISTRADO
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.goldenPollen.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.speed, color: AppColors.goldenPollen, size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Último odômetro registrado:', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text(formatKm(currentVehicleKm), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        ],
+                      ),
+                    ),
+                    if (diffKm > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.success),
+                        ),
+                        child: Text(
+                          '+${formatKm(diffKm)} rodados',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.success),
+                        ),
+                      )
+                    else
+                      TextButton(
+                        onPressed: () => setState(() => _km.text = '$currentVehicleKm'),
+                        child: const Text('Usar'),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
+
               AppTextField(
                 controller: _km,
                 label: 'Km Atual do Veículo',
@@ -1587,36 +1853,156 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4, left: 4),
                   child: Text(
-                    'Odômetro registrado do veículo: ${formatKm(currentVehicleKm)}. Digite a quilometragem atual.',
+                    'Odômetro registrado: ${formatKm(currentVehicleKm)}. Digite a quilometragem atual.',
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      controller: _liters,
-                      label: volumeLabel,
-                      icon: isGnv ? Icons.compress : Icons.local_gas_station,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      validator: (v) => Validators.number(v, field: volumeName),
-                    ),
+              const SizedBox(height: 14),
+
+              // CHAVE DE TANQUE COMPLETO
+              Card(
+                elevation: 0,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1E1E24)
+                    : Colors.grey[50],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: _isFullTank
+                        ? AppColors.goldenPollen.withValues(alpha: 0.4)
+                        : Colors.grey.withValues(alpha: 0.25),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTextField(
-                      controller: _price,
-                      label: r'Valor Total (R$)',
-                      icon: Icons.attach_money,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      validator: (v) => Validators.number(v, field: 'Valor'),
-                    ),
+                ),
+                child: SwitchListTile(
+                  value: _isFullTank,
+                  activeThumbColor: AppColors.goldenPollen,
+                  title: Row(
+                    children: [
+                      Icon(
+                        _isFullTank ? Icons.local_gas_station : Icons.local_gas_station_outlined,
+                        color: _isFullTank ? AppColors.goldenPollen : Colors.grey,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('Tanque Completo (Cheio)?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    ],
                   ),
-                ],
+                  subtitle: Text(
+                    _isFullTank
+                        ? 'Sim — Permite calcular com precisão o consumo real deste trecho.'
+                        : 'Não (Parcial) — Litros e km acumulam até o próximo tanque cheio.',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  onChanged: (val) => setState(() => _isFullTank = val),
+                ),
               ),
+              const SizedBox(height: 14),
+
+              // CALCULADORA AUTOMÁTICA DE 3 CAMPOS (PREÇO/L, VOLUME, TOTAL R$)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.goldenPollen.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.25)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.calculate, size: 18, color: AppColors.goldenPollen),
+                        SizedBox(width: 6),
+                        Text(
+                          'Calculadora Automática',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.goldenPollen),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Preencha 2 campos quaisquer e o 3º calcula na hora:',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _pricePerUnit,
+                            decoration: InputDecoration(
+                              labelText: 'Preço/$unitLabel (R\$)',
+                              prefixIcon: const Icon(Icons.sell_outlined, size: 18),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            onChanged: _onPricePerUnitChanged,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _liters,
+                            decoration: InputDecoration(
+                              labelText: volumeLabel,
+                              prefixIcon: Icon(isGnv ? Icons.compress : Icons.local_gas_station, size: 18),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            validator: (v) => Validators.number(v, field: volumeName),
+                            onChanged: _onLitersChanged,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _price,
+                            decoration: const InputDecoration(
+                              labelText: r'Total (R$)',
+                              prefixIcon: Icon(Icons.attach_money, size: 18),
+                              isDense: true,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            validator: (v) => Validators.number(v, field: 'Valor'),
+                            onChanged: _onTotalPriceChanged,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // CAMPO DE POSTO COM AUTOCOMPLETE
+              Autocomplete<String>(
+                initialValue: TextEditingValue(text: _gasStation.text),
+                optionsBuilder: (textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return _stationSuggestions;
+                  }
+                  return _stationSuggestions.where((s) =>
+                      s.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                },
+                onSelected: (selection) => _gasStation.text = selection,
+                fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                  // Sincroniza se o controller inicial mudar
+                  controller.addListener(() => _gasStation.text = controller.text);
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    onEditingComplete: onEditingComplete,
+                    decoration: const InputDecoration(
+                      labelText: 'Posto de Combustível (opcional)',
+                      hintText: 'Ex: Shell, Ipiranga, Petrobras BR',
+                      prefixIcon: Icon(Icons.storefront),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+
               if (showCalc && tripConsumption != null) ...[
-                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -1629,10 +2015,10 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.calculate_outlined, size: 20, color: AppColors.goldenPollen),
+                          const Icon(Icons.auto_awesome, size: 18, color: AppColors.goldenPollen),
                           const SizedBox(width: 8),
                           Text(
-                            'Cálculo Automático',
+                            'Resumo do Abastecimento',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).brightness == Brightness.dark
@@ -1648,7 +2034,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                         style: const TextStyle(fontSize: 13),
                       ),
                       Text(
-                        '• Rendimento calculado deste abastecimento: ${formatNumber(tripConsumption, 1)} ${isGnv ? 'km/m³' : 'km/l'}',
+                        '• Rendimento estimado deste abastecimento: ${formatNumber(tripConsumption, 1)} ${isGnv ? 'km/m³' : 'km/l'}',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       const Text(
@@ -1658,8 +2044,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
               ],
-              const SizedBox(height: 12),
+
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.calendar_month),

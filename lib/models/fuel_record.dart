@@ -20,6 +20,8 @@ class FuelRecord {
   final int km;
   final double liters;
   final double totalPrice;
+  final bool isFullTank;
+  final String gasStation;
   final DateTime createdAt;
 
   FuelRecord({
@@ -30,6 +32,8 @@ class FuelRecord {
     required this.km,
     required this.liters,
     required this.totalPrice,
+    this.isFullTank = true,
+    this.gasStation = '',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -46,6 +50,8 @@ class FuelRecord {
         'km': km,
         'liters': liters,
         'totalPrice': totalPrice,
+        'isFullTank': isFullTank,
+        'gasStation': gasStation,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 
@@ -59,6 +65,8 @@ class FuelRecord {
       km: (d['km'] as num?)?.toInt() ?? 0,
       liters: (d['liters'] as num?)?.toDouble() ?? 0,
       totalPrice: (d['totalPrice'] as num?)?.toDouble() ?? 0,
+      isFullTank: d['isFullTank'] ?? true,
+      gasStation: d['gasStation'] ?? '',
       createdAt: (d['createdAt'] as Timestamp?)?.toDate(),
     );
   }

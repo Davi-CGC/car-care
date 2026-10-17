@@ -10,7 +10,16 @@ import '../models/vehicle.dart';
 class FipeService {
   static const _baseUrl = 'https://parallelum.com.br/fipe/api/v1';
 
-  String _path(VehicleType type) => type == VehicleType.moto ? 'motos' : 'carros';
+  String _path(VehicleType type) {
+    switch (type) {
+      case VehicleType.moto:
+        return 'motos';
+      case VehicleType.caminhao:
+        return 'caminhoes';
+      case VehicleType.carro:
+        return 'carros';
+    }
+  }
 
   Future<List<FipeItem>> brands(VehicleType type) async {
     final data = await _get('${_path(type)}/marcas') as List;

@@ -5,13 +5,16 @@ import '../../models/maintenance.dart';
 import '../../models/vehicle.dart';
 import '../../repositories/fuel_repository.dart';
 import '../../repositories/maintenance_repository.dart';
+import '../../repositories/vehicle_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/calculations.dart';
 import '../../utils/formatters.dart';
 import '../../utils/maintenance_catalog.dart';
 import '../../utils/rodizio_helper.dart';
 import '../../widgets/consumption_thermometer.dart';
+import '../../widgets/fuel_routine_card.dart';
 import '../../widgets/layout.dart';
+import 'vehicle_reminders_sheet.dart';
 
 enum _LogFilter { todos, manutencoes, abastecimentos }
 
@@ -46,6 +49,7 @@ class VehicleLogScreen extends StatefulWidget {
 class _VehicleLogScreenState extends State<VehicleLogScreen> {
   final _fuelRepo = FuelRepository();
   final _maintenanceRepo = MaintenanceRepository();
+  final _vehicleRepo = VehicleRepository();
 
   _LogFilter _filter = _LogFilter.todos;
 
@@ -54,7 +58,7 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final v = widget.vehicle;
-    final rodizio = RodizioHelper.getInfo(v.plate, isCar: v.isCar);
+    final rodizio = RodizioHelper.getInfo(v.plate, type: v.type);
 
     return Scaffold(
       appBar: AppBar(
@@ -78,6 +82,7 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
               final totalSpent = totalFuelCost + totalMaintCost;
 
               final avgConsumption = Calculations.averageConsumption(vehicleFuels);
+              final dailyKm = Calculations.dailyAverageDistance(vehicleFuels);
 
               // Unifica registros na linha do tempo
               final entries = <_LogEntry>[];
@@ -119,7 +124,9 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
                                   radius: 26,
                                   backgroundColor: AppColors.goldenPollen.withValues(alpha: 0.2),
                                   child: Icon(
-                                    v.isCar ? Icons.directions_car : Icons.two_wheeler,
+                                    v.isTruck
+                                        ? Icons.local_shipping
+                                        : (v.isCar ? Icons.directions_car : Icons.two_wheeler),
                                     color: AppColors.goldenPollen,
                                     size: 30,
                                   ),
@@ -158,9 +165,9 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
-                                    v.isCar
-                                        ? 'Dia de Rodízio: ${rodizio.dayName} (${rodizio.timeRange})'
-                                        : 'Rodízio: Isento (Motocicleta)',
+                                    v.isMotorcycle
+                                        ? 'Rodízio: Isento (Motocicleta)'
+                                        : 'Dia de Rodízio: ${rodizio.dayName} (${rodizio.timeRange})',
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
@@ -182,13 +189,28 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
                                   ),
                               ],
                             ),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.assignment_outlined, size: 18),
+                                label: const Text('Lembretes: IPVA, Licenciamento, Seguro & Pneus'),
+                                onPressed: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    builder: (_) => VehicleRemindersSheet(vehicle: v, repo: _vehicleRepo),
+                                  );
+                                },
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // Resumo Financeiro
+                    // Resumo Financeiro e Média Diária
                     Row(
                       children: [
                         Expanded(
@@ -217,7 +239,34 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    if (dailyKm > 0) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldenPollen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.route, size: 18, color: AppColors.goldenPollen),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Média diária de distância: ${formatNumber(dailyKm, 1)} km/dia',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+
+                    // Card de Rotina de Abastecimento (idêntico ao modelo)
+                    if (vehicleFuels.isNotEmpty) ...[
+                      FuelRoutineCard(vehicle: v, fuels: vehicleFuels),
+                      const SizedBox(height: 16),
+                    ],
 
                     // Termômetro de Consumo
                     if (avgConsumption != null) ...[
@@ -226,7 +275,7 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
                           final lastFuel = vehicleFuels.isNotEmpty ? vehicleFuels.first : null;
                           final eval = Calculations.evaluateConsumption(
                             avgConsumption,
-                            isCar: v.isCar,
+                            vehicleType: v.type,
                             fuelType: lastFuel?.fuelType ?? FuelTypes.gasolina,
                           );
                           if (eval == null) return const SizedBox.shrink();

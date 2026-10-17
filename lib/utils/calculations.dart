@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../models/fuel_record.dart';
 import '../models/maintenance.dart';
 import '../models/maintenance_alert.dart';
@@ -26,7 +28,30 @@ class ConsumptionEvaluation {
   });
 }
 
-/// Cálculos do app: alertas, consumo médio, termômetro e gastos.
+/// Estatísticas de Rotina de Abastecimento (reproduz fielmente o card de rotina).
+class FuelRoutineStats {
+  final double avgDistanceBetweenFuels; // km
+  final double avgFrequencyDays; // Dias
+  final double estimatedAutonomy; // km
+  final double monthlyProjection; // R$
+  final int fullTankCount;
+  final int totalFuels;
+  final double fullTankPercentage; // %
+  final double? fullTankAverageConsumption; // km/l dos ciclos de tanque cheio
+
+  const FuelRoutineStats({
+    required this.avgDistanceBetweenFuels,
+    required this.avgFrequencyDays,
+    required this.estimatedAutonomy,
+    required this.monthlyProjection,
+    required this.fullTankCount,
+    required this.totalFuels,
+    required this.fullTankPercentage,
+    this.fullTankAverageConsumption,
+  });
+}
+
+/// Cálculos do app: alertas, consumo médio, rotina de abastecimento, termômetro e gastos.
 class Calculations {
   Calculations._();
 
@@ -88,15 +113,152 @@ class Calculations {
     return distance / liters;
   }
 
+  /// Método oficial do Tanque Cheio:
+  /// Calcula o consumo real medido de um tanque cheio até o próximo.
+  static double? fullTankConsumption(List<FuelRecord> records) {
+    if (records.length < 2) return null;
+    final sorted = [...records]..sort((a, b) => a.km.compareTo(b.km));
+
+    double totalDistance = 0;
+    double totalLiters = 0;
+
+    int lastFullIndex = -1;
+    for (int i = 0; i < sorted.length; i++) {
+      if (sorted[i].isFullTank) {
+        if (lastFullIndex != -1) {
+          final distance = sorted[i].km - sorted[lastFullIndex].km;
+          if (distance > 0) {
+            double cycleLiters = 0;
+            for (int j = lastFullIndex + 1; j <= i; j++) {
+              cycleLiters += sorted[j].liters;
+            }
+            if (cycleLiters > 0) {
+              totalDistance += distance;
+              totalLiters += cycleLiters;
+            }
+          }
+        }
+        lastFullIndex = i;
+      }
+    }
+
+    if (totalDistance > 0 && totalLiters > 0) {
+      return totalDistance / totalLiters;
+    }
+    return null;
+  }
+
+  /// Estatísticas completas da Rotina de Abastecimento (Card idêntico à imagem).
+  static FuelRoutineStats fuelRoutine(Vehicle vehicle, List<FuelRecord> fuels) {
+    if (fuels.isEmpty) {
+      return const FuelRoutineStats(
+        avgDistanceBetweenFuels: 0,
+        avgFrequencyDays: 0,
+        estimatedAutonomy: 0,
+        monthlyProjection: 0,
+        fullTankCount: 0,
+        totalFuels: 0,
+        fullTankPercentage: 0,
+      );
+    }
+
+    final sorted = [...fuels]..sort((a, b) => a.km.compareTo(b.km));
+    final totalFuels = sorted.length;
+    final fullTankCount = sorted.where((f) => f.isFullTank).length;
+    final fullTankPercentage =
+        totalFuels > 0 ? (fullTankCount / totalFuels) * 100 : 0.0;
+
+    // Distância e frequência entre abastecimentos consecutivos
+    final distances = <double>[];
+    final dayIntervals = <double>[];
+    for (int i = 1; i < sorted.length; i++) {
+      final prev = sorted[i - 1];
+      final curr = sorted[i];
+      final dKm = (curr.km - prev.km).toDouble();
+      if (dKm > 0) distances.add(dKm);
+
+      final diffDays = curr.date.difference(prev.date).inHours / 24.0;
+      if (diffDays > 0) dayIntervals.add(diffDays);
+    }
+
+    final avgDistance = distances.isNotEmpty
+        ? distances.reduce((a, b) => a + b) / distances.length
+        : (sorted.first.km > 0 ? sorted.first.km.toDouble() : 0.0);
+
+    final avgFrequency = dayIntervals.isNotEmpty
+        ? dayIntervals.reduce((a, b) => a + b) / dayIntervals.length
+        : 0.0;
+
+    // Consumo médio geral e por tanque cheio
+    final generalAvg = averageConsumption(sorted);
+    final fullTankAvg = fullTankConsumption(sorted);
+    final effectiveAvg = fullTankAvg ?? generalAvg;
+
+    // Autonomia estimada com tanque cheio
+    final tankCap = vehicle.effectiveTankCapacity;
+    double estimatedAutonomy = 0.0;
+    if (effectiveAvg != null && effectiveAvg > 0) {
+      estimatedAutonomy = effectiveAvg * tankCap;
+    } else if (avgDistance > 0) {
+      estimatedAutonomy = avgDistance * 1.25;
+    }
+
+    // Projeção mensal em R$
+    double monthlyProjection = 0.0;
+    final totalSpent = sorted.fold<double>(0, (sum, f) => sum + f.totalPrice);
+    if (avgFrequency > 0 && totalFuels > 0) {
+      final avgCostPerFill = totalSpent / totalFuels;
+      final fillsPerMonth = 30.0 / avgFrequency;
+      monthlyProjection = fillsPerMonth * avgCostPerFill;
+    } else if (sorted.length >= 2) {
+      final firstDate = sorted.first.date;
+      final lastDate = sorted.last.date;
+      final totalDays =
+          math.max(1.0, lastDate.difference(firstDate).inHours / 24.0);
+      monthlyProjection = (totalSpent / totalDays) * 30.0;
+    } else if (totalFuels > 0) {
+      monthlyProjection = sorted.first.totalPrice;
+    }
+
+    return FuelRoutineStats(
+      avgDistanceBetweenFuels: avgDistance,
+      avgFrequencyDays: avgFrequency,
+      estimatedAutonomy: estimatedAutonomy,
+      monthlyProjection: monthlyProjection,
+      fullTankCount: fullTankCount,
+      totalFuels: totalFuels,
+      fullTankPercentage: fullTankPercentage,
+      fullTankAverageConsumption: effectiveAvg,
+    );
+  }
+
+  /// Média diária de distância percorrida (km/dia).
+  static double dailyAverageDistance(List<FuelRecord> fuels) {
+    if (fuels.length < 2) return 0.0;
+    final sorted = [...fuels]..sort((a, b) => a.km.compareTo(b.km));
+    final distance = sorted.last.km - sorted.first.km;
+    final days = math.max(
+        1.0, sorted.last.date.difference(sorted.first.date).inHours / 24.0);
+    if (distance <= 0) return 0.0;
+    return distance / days;
+  }
+
   /// Avalia a eficiência do consumo (Termômetro: Econômico / Normal / Alto).
   static ConsumptionEvaluation? evaluateConsumption(
     double? kmPerUnit, {
     bool isCar = true,
+    bool isTruck = false,
+    VehicleType? vehicleType,
     String fuelType = FuelTypes.gasolina,
   }) {
     if (kmPerUnit == null || kmPerUnit <= 0) return null;
 
-    if (!isCar) {
+    final type = vehicleType ??
+        (isTruck
+            ? VehicleType.caminhao
+            : (isCar ? VehicleType.carro : VehicleType.moto));
+
+    if (type == VehicleType.moto) {
       // Motos
       if (kmPerUnit >= 33.0) {
         return ConsumptionEvaluation(
@@ -120,6 +282,36 @@ class Calculations {
           level: ConsumptionLevel.alto,
           label: 'Alto Consumo',
           description: 'Consumindo bastante. Verifique velas, filtro e pneus.',
+          score: 0.20,
+        );
+      }
+    }
+
+    if (type == VehicleType.caminhao) {
+      // Caminhão (Diesel pesado)
+      if (kmPerUnit >= 3.5) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.otimo,
+          label: 'Excelente Rendimento',
+          description: 'Ótima média para caminhão pesado!',
+          score: 0.90,
+        );
+      } else if (kmPerUnit >= 2.4) {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.moderado,
+          label: 'Normal / Moderado',
+          description: 'Consumo dentro do padrão para caminhão.',
+          score: 0.55,
+        );
+      } else {
+        return ConsumptionEvaluation(
+          kmPerLiter: kmPerUnit,
+          level: ConsumptionLevel.alto,
+          label: 'Alto Consumo',
+          description:
+              'Consumo elevado. Verifique filtros, bicos e calibragem.',
           score: 0.20,
         );
       }
@@ -179,7 +371,7 @@ class Calculations {
         );
       }
     } else {
-      // Gasolina / Diesel
+      // Gasolina / Diesel (Carro)
       if (kmPerUnit >= 13.0) {
         return ConsumptionEvaluation(
           kmPerLiter: kmPerUnit,

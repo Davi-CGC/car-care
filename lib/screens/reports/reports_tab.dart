@@ -12,7 +12,7 @@ import '../../widgets/empty_state.dart';
 import '../../widgets/layout.dart';
 
 enum PeriodFilter { semana, mes, ano }
-enum VehicleTypeFilter { todos, carros, motos }
+enum VehicleTypeFilter { todos, carros, motos, caminhoes }
 
 /// Dados de uma coluna do gráfico
 class _BarData {
@@ -77,7 +77,8 @@ class _ReportsTabState extends State<ReportsTab> {
     // Filtrar por tipo de veículo
     final filteredVehicles = widget.vehicles.where((v) {
       if (_typeFilter == VehicleTypeFilter.carros) return v.isCar;
-      if (_typeFilter == VehicleTypeFilter.motos) return !v.isCar;
+      if (_typeFilter == VehicleTypeFilter.motos) return v.isMotorcycle;
+      if (_typeFilter == VehicleTypeFilter.caminhoes) return v.isTruck;
       return true;
     }).toList();
 
@@ -158,6 +159,14 @@ class _ReportsTabState extends State<ReportsTab> {
                   selected: _typeFilter == VehicleTypeFilter.motos,
                   onSelected: (_) => setState(() {
                     _typeFilter = VehicleTypeFilter.motos;
+                    _selectedBarIndex = null;
+                  }),
+                ),
+                ChoiceChip(
+                  label: const Text('Caminhões'),
+                  selected: _typeFilter == VehicleTypeFilter.caminhoes,
+                  onSelected: (_) => setState(() {
+                    _typeFilter = VehicleTypeFilter.caminhoes;
                     _selectedBarIndex = null;
                   }),
                 ),
@@ -357,7 +366,7 @@ class _ReportsTabState extends State<ReportsTab> {
                   Row(
                     children: [
                       Icon(
-                        v.isCar ? Icons.directions_car : Icons.two_wheeler,
+                        v.isTruck ? Icons.local_shipping : (v.isCar ? Icons.directions_car : Icons.two_wheeler),
                         color: AppColors.goldenPollen,
                       ),
                       const SizedBox(width: 8),
@@ -395,13 +404,26 @@ class _ReportsTabState extends State<ReportsTab> {
                       ),
                     ],
                   ),
+                  Builder(
+                    builder: (_) {
+                      final dailyKm = Calculations.dailyAverageDistance(vFuels);
+                      if (dailyKm <= 0) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Média Diária: ${formatNumber(dailyKm, 1)} km/dia',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 8),
                   if (avg != null) ...[
                     Builder(
                       builder: (_) {
                         final eval = Calculations.evaluateConsumption(
                           avg,
-                          isCar: v.isCar,
+                          vehicleType: v.type,
                           fuelType: lastFuel?.fuelType ?? FuelTypes.gasolina,
                         );
                         if (eval == null) return const SizedBox.shrink();

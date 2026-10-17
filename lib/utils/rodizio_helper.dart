@@ -1,3 +1,5 @@
+import '../models/vehicle.dart';
+
 /// Utilitário para cálculo e aviso de Rodízio Veicular Municipal (padrão São Paulo e capitais).
 /// Regra baseada no último dígito da placa do veículo:
 /// - Finais 1 e 2: Segunda-feira
@@ -7,6 +9,7 @@
 /// - Finais 9 e 0: Sexta-feira
 /// - Sábados e Domingos: Livre
 /// - Motocicletas: Isentas de rodízio municipal
+/// - Caminhões: Sujeitos ao rodízio de caminhões / ZMRC (05h às 21h em dias úteis)
 class RodizioInfo {
   final int? lastDigit;
   final String dayName;
@@ -38,8 +41,18 @@ class RodizioHelper {
   }
 
   /// Retorna as informações de rodízio para um veículo.
-  static RodizioInfo getInfo(String plate, {bool isCar = true}) {
-    if (!isCar) {
+  static RodizioInfo getInfo(
+    String plate, {
+    bool isCar = true,
+    bool isTruck = false,
+    VehicleType? type,
+  }) {
+    final effectiveType = type ??
+        (isTruck
+            ? VehicleType.caminhao
+            : (isCar ? VehicleType.carro : VehicleType.moto));
+
+    if (effectiveType == VehicleType.moto) {
       return const RodizioInfo(
         lastDigit: null,
         dayName: 'Isento',
@@ -64,6 +77,9 @@ class RodizioHelper {
 
     final now = DateTime.now();
     final currentWeekday = now.weekday; // 1 = Monday, 7 = Sunday
+    final timeRange = effectiveType == VehicleType.caminhao
+        ? '05h às 21h (ZMRC)'
+        : '07h às 10h e 17h às 20h';
 
     switch (digit) {
       case 1:
@@ -74,6 +90,7 @@ class RodizioHelper {
           weekday: DateTime.monday,
           isToday: currentWeekday == DateTime.monday,
           isExempt: false,
+          timeRange: timeRange,
           description: 'Segunda-feira (finais 1 e 2)',
         );
       case 3:
@@ -84,6 +101,7 @@ class RodizioHelper {
           weekday: DateTime.tuesday,
           isToday: currentWeekday == DateTime.tuesday,
           isExempt: false,
+          timeRange: timeRange,
           description: 'Terça-feira (finais 3 e 4)',
         );
       case 5:
@@ -94,6 +112,7 @@ class RodizioHelper {
           weekday: DateTime.wednesday,
           isToday: currentWeekday == DateTime.wednesday,
           isExempt: false,
+          timeRange: timeRange,
           description: 'Quarta-feira (finais 5 e 6)',
         );
       case 7:
@@ -104,6 +123,7 @@ class RodizioHelper {
           weekday: DateTime.thursday,
           isToday: currentWeekday == DateTime.thursday,
           isExempt: false,
+          timeRange: timeRange,
           description: 'Quinta-feira (finais 7 e 8)',
         );
       case 9:
@@ -114,6 +134,7 @@ class RodizioHelper {
           weekday: DateTime.friday,
           isToday: currentWeekday == DateTime.friday,
           isExempt: false,
+          timeRange: timeRange,
           description: 'Sexta-feira (finais 9 e 0)',
         );
       default:

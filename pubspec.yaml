@@ -21,6 +21,7 @@ dependencies:
   http: ^1.6.0                    # Consulta à Tabela FIPE
   intl: ^0.20.3                   # Formatação de datas e moeda (pt_BR)
   shared_preferences: ^2.5.6      # Salva a preferência de tema
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:

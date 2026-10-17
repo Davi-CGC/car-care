@@ -52,12 +52,15 @@ class FuelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = record;
+    final stationPart = r.gasStation.trim().isNotEmpty ? '📍 ${r.gasStation} • ' : '';
+    final tankTag = r.isFullTank ? 'Tanque Cheio' : 'Parcial';
+
     return Card(
       child: ListTile(
         onTap: onTap,
         leading: const _IconBox(Icons.local_gas_station),
         title: Text('${r.fuelType} • ${formatNumber(r.liters, 2)} ${r.unit} • ${formatMoney(r.pricePerLiter)}/${r.unit}'),
-        subtitle: Text('${formatDate(r.date)} • ${formatKm(r.km)}'),
+        subtitle: Text('$stationPart${formatDate(r.date)} • ${formatKm(r.km)} • $tankTag'),
         trailing: Text(formatMoney(r.totalPrice),
             style: const TextStyle(fontWeight: FontWeight.bold)),
       ),

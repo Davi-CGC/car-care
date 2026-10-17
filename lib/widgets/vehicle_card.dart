@@ -18,6 +18,12 @@ class VehicleCard extends StatelessWidget {
     this.alertCount = 0,
   });
 
+  IconData get _icon {
+    if (vehicle.isTruck) return Icons.local_shipping;
+    if (vehicle.isCar) return Icons.directions_car;
+    return Icons.two_wheeler;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -43,7 +49,7 @@ class VehicleCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  vehicle.isCar ? Icons.directions_car : Icons.two_wheeler,
+                  _icon,
                   color: AppColors.goldenPollen,
                   size: 30,
                 ),
@@ -66,8 +72,8 @@ class VehicleCard extends StatelessWidget {
                     if (vehicle.plate.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Builder(builder: (_) {
-                        final rodizio = RodizioHelper.getInfo(vehicle.plate, isCar: vehicle.isCar);
-                        if (!vehicle.isCar) {
+                        final rodizio = RodizioHelper.getInfo(vehicle.plate, type: vehicle.type);
+                        if (vehicle.isMotorcycle) {
                           return const Text(
                             'Isento de rodízio',
                             style: TextStyle(fontSize: 11, color: Colors.grey),
