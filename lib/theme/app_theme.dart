@@ -99,6 +99,15 @@ class AppTheme {
         backgroundColor: cardColor,
         indicatorColor: AppColors.goldenPollen,
         surfaceTintColor: Colors.transparent,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          return TextStyle(
+            fontSize: 11,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.bold
+                : FontWeight.w500,
+            overflow: TextOverflow.ellipsis,
+          );
+        }),
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: cardColor,

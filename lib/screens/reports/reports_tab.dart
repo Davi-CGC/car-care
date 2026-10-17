@@ -130,47 +130,43 @@ class _ReportsTabState extends State<ReportsTab> {
         ),
         const SizedBox(height: 10),
 
-        // Filtro Carro vs Moto
-        Row(
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 6,
           children: [
             const Text('Filtrar:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(width: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('Todos'),
-                  selected: _typeFilter == VehicleTypeFilter.todos,
-                  onSelected: (_) => setState(() {
-                    _typeFilter = VehicleTypeFilter.todos;
-                    _selectedBarIndex = null;
-                  }),
-                ),
-                ChoiceChip(
-                  label: const Text('Carros'),
-                  selected: _typeFilter == VehicleTypeFilter.carros,
-                  onSelected: (_) => setState(() {
-                    _typeFilter = VehicleTypeFilter.carros;
-                    _selectedBarIndex = null;
-                  }),
-                ),
-                ChoiceChip(
-                  label: const Text('Motos'),
-                  selected: _typeFilter == VehicleTypeFilter.motos,
-                  onSelected: (_) => setState(() {
-                    _typeFilter = VehicleTypeFilter.motos;
-                    _selectedBarIndex = null;
-                  }),
-                ),
-                ChoiceChip(
-                  label: const Text('Caminhões'),
-                  selected: _typeFilter == VehicleTypeFilter.caminhoes,
-                  onSelected: (_) => setState(() {
-                    _typeFilter = VehicleTypeFilter.caminhoes;
-                    _selectedBarIndex = null;
-                  }),
-                ),
-              ],
+            ChoiceChip(
+              label: const Text('Todos'),
+              selected: _typeFilter == VehicleTypeFilter.todos,
+              onSelected: (_) => setState(() {
+                _typeFilter = VehicleTypeFilter.todos;
+                _selectedBarIndex = null;
+              }),
+            ),
+            ChoiceChip(
+              label: const Text('Carros'),
+              selected: _typeFilter == VehicleTypeFilter.carros,
+              onSelected: (_) => setState(() {
+                _typeFilter = VehicleTypeFilter.carros;
+                _selectedBarIndex = null;
+              }),
+            ),
+            ChoiceChip(
+              label: const Text('Motos'),
+              selected: _typeFilter == VehicleTypeFilter.motos,
+              onSelected: (_) => setState(() {
+                _typeFilter = VehicleTypeFilter.motos;
+                _selectedBarIndex = null;
+              }),
+            ),
+            ChoiceChip(
+              label: const Text('Caminhões'),
+              selected: _typeFilter == VehicleTypeFilter.caminhoes,
+              onSelected: (_) => setState(() {
+                _typeFilter = VehicleTypeFilter.caminhoes;
+                _selectedBarIndex = null;
+              }),
             ),
           ],
         ),

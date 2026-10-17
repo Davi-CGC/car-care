@@ -125,46 +125,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  body: Stack(
+                  body: IndexedStack(
+                    index: _currentIndex,
                     children: [
-                      IndexedStack(
-                        index: _currentIndex,
-                        children: [
-                          _buildOverviewTab(user?.displayName, vehicles, maintenances, fuels, alerts),
-                          _buildVehiclesTab(vehicles, alerts),
-                          _buildMaintenancesTab(vehicles, maintenances),
-                          _buildFuelTab(vehicles, fuels),
-                          ReportsTab(vehicles: vehicles, maintenances: maintenances, fuels: fuels),
-                        ],
-                      ),
-                      Positioned(
-                        left: 16,
-                        bottom: 16,
-                        child: FloatingActionButton(
-                          heroTag: 'help_manual_fab',
-                          backgroundColor: AppColors.goldenPollen,
-                          foregroundColor: AppColors.obsidian,
-                          tooltip: 'Dúvidas Frequentes (FAQ)',
-                          elevation: 4,
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const ManualScreen()),
-                            );
-                          },
-                          child: const Icon(
-                            Icons.question_mark,
-                            color: AppColors.obsidian,
-                            size: 26,
-                            weight: 700,
-                          ),
-                        ),
-                      ),
+                      _buildOverviewTab(user?.displayName, vehicles, maintenances, fuels, alerts),
+                      _buildVehiclesTab(vehicles, alerts),
+                      _buildMaintenancesTab(vehicles, maintenances),
+                      _buildFuelTab(vehicles, fuels),
+                      ReportsTab(vehicles: vehicles, maintenances: maintenances, fuels: fuels),
                     ],
                   ),
                   bottomNavigationBar: NavigationBar(
                     selectedIndex: _currentIndex,
                     onDestinationSelected: (i) => setState(() => _currentIndex = i),
+                    labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                     destinations: [
                       NavigationDestination(
                         icon: Badge(
@@ -187,12 +161,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       NavigationDestination(
                         icon: const Icon(Icons.build_outlined),
                         selectedIcon: const Icon(Icons.build),
-                        label: 'Manutenções',
+                        label: 'Serviços',
                       ),
                       NavigationDestination(
                         icon: const Icon(Icons.local_gas_station_outlined),
                         selectedIcon: const Icon(Icons.local_gas_station),
-                        label: 'Abastecimentos',
+                        label: 'Abastecer',
                       ),
                       NavigationDestination(
                         icon: const Icon(Icons.bar_chart_outlined),
@@ -201,7 +175,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  floatingActionButton: _buildFab(vehicles),
+                  floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+                  floatingActionButton: _buildFloatingActions(vehicles),
                 );
               },
             );
@@ -211,13 +186,46 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildFloatingActions(List<Vehicle> vehicles) {
+    final rightFab = _buildFab(vehicles);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'help_manual_fab',
+            backgroundColor: AppColors.goldenPollen,
+            foregroundColor: AppColors.obsidian,
+            tooltip: 'Dúvidas Frequentes (FAQ)',
+            elevation: 4,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ManualScreen()),
+              );
+            },
+            child: const Icon(
+              Icons.question_mark,
+              color: AppColors.obsidian,
+              size: 26,
+              weight: 700,
+            ),
+          ),
+          if (rightFab != null) rightFab else const SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+
   Widget? _buildFab(List<Vehicle> vehicles) {
     switch (_currentIndex) {
       case 1:
         return FloatingActionButton.extended(
           onPressed: () => _showVehicleDialog(context),
           icon: const Icon(Icons.add),
-          label: const Text('Novo Veículo'),
+          label: const Text('Veículo'),
         );
       case 2:
         return vehicles.isEmpty
@@ -225,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : FloatingActionButton.extended(
                 onPressed: () => _showMaintenanceDialog(context, vehicles),
                 icon: const Icon(Icons.add),
-                label: const Text('Nova Manutenção'),
+                label: const Text('Manutenção'),
               );
       case 3:
         return vehicles.isEmpty
@@ -233,14 +241,14 @@ class _HomeScreenState extends State<HomeScreen> {
             : FloatingActionButton.extended(
                 onPressed: () => _showFuelDialog(context, vehicles),
                 icon: const Icon(Icons.add),
-                label: const Text('Novo Abastecimento'),
+                label: const Text('Abastecer'),
               );
       default:
         return vehicles.isEmpty
             ? FloatingActionButton.extended(
                 onPressed: () => _showVehicleDialog(context),
                 icon: const Icon(Icons.add),
-                label: const Text('Cadastrar Veículo'),
+                label: const Text('Veículo'),
               )
             : null;
     }
@@ -1767,7 +1775,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final isGnv = _selectedFuelType == FuelTypes.gnv;
     final unitLabel = isGnv ? 'm³' : 'L';
-    final volumeLabel = isGnv ? 'Volume (m³)' : 'Litros (L)';
+    final volumeLabel = isGnv ? 'Volume (m³)' : 'Volume (L)';
     final volumeName = isGnv ? 'Volume em m³' : 'Litros';
 
     final vehicle = widget.vehicles.firstWhere(
@@ -1962,9 +1970,10 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                           child: TextFormField(
                             controller: _pricePerUnit,
                             decoration: InputDecoration(
-                              labelText: 'Preço/$unitLabel (R\$)',
-                              prefixIcon: const Icon(Icons.sell_outlined, size: 18),
+                              labelText: 'Preço/$unitLabel',
+                              hintText: '0,00',
                               isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             onChanged: _onPricePerUnitChanged,
@@ -1976,8 +1985,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                             controller: _liters,
                             decoration: InputDecoration(
                               labelText: volumeLabel,
-                              prefixIcon: Icon(isGnv ? Icons.compress : Icons.local_gas_station, size: 18),
+                              hintText: '0,0',
                               isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             validator: (v) => Validators.number(v, field: volumeName),
@@ -1990,8 +2000,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                             controller: _price,
                             decoration: const InputDecoration(
                               labelText: r'Total (R$)',
-                              prefixIcon: Icon(Icons.attach_money, size: 18),
+                              hintText: '0,00',
                               isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                             ),
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             validator: (v) => Validators.number(v, field: 'Valor'),

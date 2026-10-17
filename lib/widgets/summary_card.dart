@@ -23,29 +23,37 @@ class SummaryCard extends StatelessWidget {
     final c = color ?? AppColors.goldenPollen;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         child: Row(
           children: [
             CircleAvatar(
+              radius: 17,
               backgroundColor: c.withValues(alpha: 0.15),
-              child: Icon(icon, color: c),
+              child: Icon(icon, color: c, size: 19),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Text(value,
-                        style: theme.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    child: Text(
+                      value,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
                   ),
-                  Text(label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(fontSize: 11, height: 1.15),
+                  ),
                 ],
               ),
             ),
