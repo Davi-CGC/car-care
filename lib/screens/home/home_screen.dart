@@ -96,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           showModalBottomSheet(
                             context: context,
                             isScrollControlled: true,
+                            useSafeArea: true,
                             builder: (_) => NearbyServicesSheet(fuels: fuels),
                           );
                         },
@@ -543,6 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
+                useSafeArea: true,
                 builder: (_) => GasStationsHistorySheet(fuels: fuels),
               );
             },
@@ -620,176 +622,184 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.90,
+          ),
+          child: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    vehicle.isTruck
-                        ? Icons.local_shipping
-                        : (vehicle.isCar ? Icons.directions_car : Icons.two_wheeler),
-                    color: AppColors.goldenPollen,
-                    size: 32,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      vehicle.name,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 32),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.speed),
-                title: const Text('Quilometragem atual'),
-                subtitle: Text(formatKm(vehicle.currentKm)),
-                trailing: TextButton(
-                  child: const Text('Atualizar'),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _showUpdateKmDialog(context, vehicle);
-                  },
-                ),
-              ),
-              if (vehicle.plate.isNotEmpty) ...[
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.badge_outlined),
-                  title: const Text('Placa'),
-                  subtitle: Text(vehicle.plate.toUpperCase()),
-                ),
-                Builder(builder: (_) {
-                  final rodizio = RodizioHelper.getInfo(vehicle.plate, type: vehicle.type);
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      Icons.calendar_month,
-                      color: rodizio.isToday ? AppColors.warning : null,
-                    ),
-                    title: const Text('Rodízio Municipal'),
-                    subtitle: Text(
-                      vehicle.isMotorcycle
-                          ? 'Isento (Motocicleta)'
-                          : '${rodizio.dayName} (${rodizio.timeRange})${rodizio.isToday ? ' • ATIVO HOJE!' : ''}',
-                      style: TextStyle(
-                        color: rodizio.isToday ? AppColors.warning : null,
-                        fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
+                  Row(
+                    children: [
+                      Icon(
+                        vehicle.isTruck
+                            ? Icons.local_shipping
+                            : (vehicle.isCar ? Icons.directions_car : Icons.two_wheeler),
+                        color: AppColors.goldenPollen,
+                        size: 32,
                       ),
-                    ),
-                  );
-                }),
-              ],
-              if (!vehicle.isMotorcycle && vehicle.transmission.isNotEmpty)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.settings),
-                  title: const Text('Câmbio'),
-                  subtitle: Text(vehicle.transmission),
-                ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.local_gas_station),
-                title: const Text('Capacidade do Tanque'),
-                subtitle: Text('${formatNumber(vehicle.effectiveTankCapacity, 0)} Litros'),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.request_quote),
-                title: const Text('Tabela FIPE'),
-                subtitle: Text(
-                  vehicle.fipeValue.isNotEmpty
-                      ? '${vehicle.fipeValue} (${vehicle.fipeReference})'
-                      : 'Não consultada',
-                ),
-                trailing: TextButton(
-                  child: const Text('Consultar'),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _showFipeLookupDialog(context, vehicle);
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.amber[800],
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.assignment),
-                label: const Text('Lembretes: IPVA, Licenciamento, Seguro & Pneus'),
-                onPressed: () {
-                  Navigator.pop(context);
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) => VehicleRemindersSheet(vehicle: vehicle, repo: _vehicleRepo),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.goldenPollen,
-                  foregroundColor: AppColors.obsidian,
-                ),
-                icon: const Icon(Icons.menu_book),
-                label: const Text('Diário de Bordo / Log do Veículo'),
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => VehicleLogScreen(vehicle: vehicle),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Editar'),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          vehicle.name,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 32),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.speed),
+                    title: const Text('Quilometragem atual'),
+                    subtitle: Text(formatKm(vehicle.currentKm)),
+                    trailing: TextButton(
+                      child: const Text('Atualizar'),
                       onPressed: () {
                         Navigator.pop(context);
-                        _showVehicleDialog(context, vehicle);
+                        _showUpdateKmDialog(context, vehicle);
                       },
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Excluir'),
-                      onPressed: () async {
-                        final confirm = await confirmDialog(
-                          context,
-                          title: 'Excluir veículo',
-                          message:
-                              'Deseja excluir "${vehicle.name}"? Todas as manutenções e abastecimentos também serão apagados.',
-                        );
-                        if (confirm) {
-                          await _vehicleRepo.delete(vehicle.id);
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            showMessage(context, 'Veículo excluído com sucesso.');
-                          }
-                        }
+                  if (vehicle.plate.isNotEmpty) ...[
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.badge_outlined),
+                      title: const Text('Placa'),
+                      subtitle: Text(vehicle.plate.toUpperCase()),
+                    ),
+                    Builder(builder: (_) {
+                      final rodizio = RodizioHelper.getInfo(vehicle.plate, type: vehicle.type);
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.calendar_month,
+                          color: rodizio.isToday ? AppColors.warning : null,
+                        ),
+                        title: const Text('Rodízio Municipal'),
+                        subtitle: Text(
+                          vehicle.isMotorcycle
+                              ? 'Isento (Motocicleta)'
+                              : '${rodizio.dayName} (${rodizio.timeRange})${rodizio.isToday ? ' • ATIVO HOJE!' : ''}',
+                          style: TextStyle(
+                            color: rodizio.isToday ? AppColors.warning : null,
+                            fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                  if (!vehicle.isMotorcycle && vehicle.transmission.isNotEmpty)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.settings),
+                      title: const Text('Câmbio'),
+                      subtitle: Text(vehicle.transmission),
+                    ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.local_gas_station),
+                    title: const Text('Capacidade do Tanque'),
+                    subtitle: Text('${formatNumber(vehicle.effectiveTankCapacity, 0)} Litros'),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.request_quote),
+                    title: const Text('Tabela FIPE'),
+                    subtitle: Text(
+                      vehicle.fipeValue.isNotEmpty
+                          ? '${vehicle.fipeValue} (${vehicle.fipeReference})'
+                          : 'Não consultada',
+                    ),
+                    trailing: TextButton(
+                      child: const Text('Consultar'),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showFipeLookupDialog(context, vehicle);
                       },
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.amber[800],
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.assignment),
+                    label: const Text('Lembretes: IPVA, Licenciamento, Seguro & Pneus'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (_) => VehicleRemindersSheet(vehicle: vehicle, repo: _vehicleRepo),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.goldenPollen,
+                      foregroundColor: AppColors.obsidian,
+                    ),
+                    icon: const Icon(Icons.menu_book),
+                    label: const Text('Diário de Bordo / Log do Veículo'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => VehicleLogScreen(vehicle: vehicle),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.edit),
+                          label: const Text('Editar'),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _showVehicleDialog(context, vehicle);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                          icon: const Icon(Icons.delete),
+                          label: const Text('Excluir'),
+                          onPressed: () async {
+                            final confirm = await confirmDialog(
+                              context,
+                              title: 'Excluir veículo',
+                              message:
+                                  'Deseja excluir "${vehicle.name}"? Todas as manutenções e abastecimentos também serão apagados.',
+                            );
+                            if (confirm) {
+                              await _vehicleRepo.delete(vehicle.id);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                showMessage(context, 'Veículo excluído com sucesso.');
+                              }
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -866,63 +876,72 @@ class _HomeScreenState extends State<HomeScreen> {
       BuildContext context, List<Vehicle> vehicles, Maintenance m, Vehicle? v) {
     showModalBottomSheet(
       context: context,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(m.category, style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            Text(v?.name ?? 'Veículo', style: const TextStyle(color: Colors.grey)),
-            const Divider(height: 24),
-            Text('Data: ${formatDate(m.date)}'),
-            Text('Quilometragem: ${formatKm(m.km)}'),
-            Text('Valor: ${formatMoney(m.cost)}'),
-            if (m.notes.isNotEmpty) Text('Observações: ${m.notes}'),
-            if (m.nextKm != null || m.nextDate != null) ...[
-              const SizedBox(height: 8),
-              const Text('Próximo Serviço:', style: TextStyle(fontWeight: FontWeight.bold)),
-              if (m.nextKm != null) Text('• Com: ${formatKm(m.nextKm!)}'),
-              if (m.nextDate != null) Text('• Em: ${formatDate(m.nextDate!)}'),
-            ],
-            const SizedBox(height: 24),
-            Row(
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetContext).size.height * 0.90,
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Editar'),
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      _showMaintenanceDialog(context, vehicles, m);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Excluir'),
-                    onPressed: () async {
-                      final confirm = await confirmDialog(
-                        sheetContext,
-                        title: 'Excluir Manutenção',
-                        message: 'Deseja apagar este registro de manutenção?',
-                      );
-                      if (confirm) {
-                        await _maintenanceRepo.delete(m.id);
-                        if (sheetContext.mounted) {
+                Text(m.category, style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                Text(v?.name ?? 'Veículo', style: const TextStyle(color: Colors.grey)),
+                const Divider(height: 24),
+                Text('Data: ${formatDate(m.date)}'),
+                Text('Quilometragem: ${formatKm(m.km)}'),
+                Text('Valor: ${formatMoney(m.cost)}'),
+                if (m.notes.isNotEmpty) Text('Observações: ${m.notes}'),
+                if (m.nextKm != null || m.nextDate != null) ...[
+                  const SizedBox(height: 8),
+                  const Text('Próximo Serviço:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  if (m.nextKm != null) Text('• Com: ${formatKm(m.nextKm!)}'),
+                  if (m.nextDate != null) Text('• Em: ${formatDate(m.nextDate!)}'),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Editar'),
+                        onPressed: () {
                           Navigator.pop(sheetContext);
-                          showMessage(context, 'Manutenção excluída.');
-                        }
-                      }
-                    },
-                  ),
+                          _showMaintenanceDialog(context, vehicles, m);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                        icon: const Icon(Icons.delete),
+                        label: const Text('Excluir'),
+                        onPressed: () async {
+                          final confirm = await confirmDialog(
+                            sheetContext,
+                            title: 'Excluir Manutenção',
+                            message: 'Deseja apagar este registro de manutenção?',
+                          );
+                          if (confirm) {
+                            await _maintenanceRepo.delete(m.id);
+                            if (sheetContext.mounted) {
+                              Navigator.pop(sheetContext);
+                              showMessage(context, 'Manutenção excluída.');
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -946,58 +965,70 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showFuelDetailsModal(BuildContext context, List<Vehicle> vehicles, FuelRecord f) {
     showModalBottomSheet(
       context: context,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Abastecimento', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            const Divider(height: 24),
-            Text('Data: ${formatDate(f.date)}'),
-            Text('Combustível: ${f.fuelType}'),
-            Text('Quilometragem: ${formatKm(f.km)}'),
-            Text('Volume: ${formatNumber(f.liters, 2)} ${f.unit}'),
-            Text('Preço por ${f.unit}: ${formatMoney(f.pricePerLiter)}'),
-            Text('Total Pago: ${formatMoney(f.totalPrice)}'),
-            const SizedBox(height: 24),
-            Row(
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetContext).size.height * 0.90,
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Editar'),
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      _showFuelDialog(context, vehicles, f);
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Excluir'),
-                    onPressed: () async {
-                      final confirm = await confirmDialog(
-                        sheetContext,
-                        title: 'Excluir Abastecimento',
-                        message: 'Deseja apagar este registro de abastecimento?',
-                      );
-                      if (confirm) {
-                        await _fuelRepo.delete(f.id);
-                        if (sheetContext.mounted) {
+                Text('Abastecimento', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                const Divider(height: 24),
+                Text('Data: ${formatDate(f.date)}'),
+                Text('Combustível: ${f.fuelType}'),
+                if (f.gasStation.isNotEmpty) Text('Posto: ${f.gasStation}'),
+                Text('Quilometragem: ${formatKm(f.km)}'),
+                Text('Volume: ${formatNumber(f.liters, 2)} ${f.unit}'),
+                if (f.pricePerLiter > 0)
+                  Text('Preço por ${f.unit}: ${formatMoney(f.pricePerLiter)}'),
+                Text('Total Pago: ${formatMoney(f.totalPrice)}'),
+                Text('Tanque Cheio: ${f.isFullTank ? "Sim" : "Não (Parcial)"}'),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Editar'),
+                        onPressed: () {
                           Navigator.pop(sheetContext);
-                          showMessage(context, 'Abastecimento excluído.');
-                        }
-                      }
-                    },
-                  ),
+                          _showFuelDialog(context, vehicles, f);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                        icon: const Icon(Icons.delete),
+                        label: const Text('Excluir'),
+                        onPressed: () async {
+                          final confirm = await confirmDialog(
+                            sheetContext,
+                            title: 'Excluir Abastecimento',
+                            message: 'Deseja apagar este registro de abastecimento?',
+                          );
+                          if (confirm) {
+                            await _fuelRepo.delete(f.id);
+                            if (sheetContext.mounted) {
+                              Navigator.pop(sheetContext);
+                              showMessage(context, 'Abastecimento excluído.');
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );

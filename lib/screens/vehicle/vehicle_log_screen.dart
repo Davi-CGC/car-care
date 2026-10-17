@@ -199,6 +199,7 @@ class _VehicleLogScreenState extends State<VehicleLogScreen> {
                                   showModalBottomSheet(
                                     context: context,
                                     isScrollControlled: true,
+                                    useSafeArea: true,
                                     builder: (_) => VehicleRemindersSheet(vehicle: v, repo: _vehicleRepo),
                                   );
                                 },
