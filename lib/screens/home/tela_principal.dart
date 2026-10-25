@@ -285,12 +285,12 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
           appSlogan,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
         ),
-        if (vehicles.any((v) => !v.isMotorcycle && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, type: v.type).isToday)) ...[
+        if (vehicles.any((v) => !v.isMotorcycle && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, type: v.type, propulsion: v.propulsion).isToday)) ...[
           const SizedBox(height: 14),
           ...vehicles
-              .where((v) => !v.isMotorcycle && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, type: v.type).isToday)
+              .where((v) => !v.isMotorcycle && v.plate.isNotEmpty && RodizioHelper.getInfo(v.plate, type: v.type, propulsion: v.propulsion).isToday)
               .map((rv) {
-            final rInfo = RodizioHelper.getInfo(rv.plate, type: rv.type);
+            final rInfo = RodizioHelper.getInfo(rv.plate, type: rv.type, propulsion: rv.propulsion);
             return Card(
               color: AppColors.warning.withValues(alpha: 0.15),
               shape: RoundedRectangleBorder(
@@ -634,6 +634,15 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                   const Divider(height: 32),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      vehicle.usesElectricPower ? Icons.bolt : Icons.local_gas_station,
+                      color: vehicle.usesElectricPower ? AppColors.success : null,
+                    ),
+                    title: const Text('Motorização'),
+                    subtitle: Text(vehicle.propulsion.label),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.speed),
                     title: const Text('Quilometragem atual'),
                     subtitle: Text(formatKm(vehicle.currentKm)),
@@ -653,12 +662,18 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                       subtitle: Text(vehicle.plate.toUpperCase()),
                     ),
                     Builder(builder: (_) {
-                      final rodizio = RodizioHelper.getInfo(vehicle.plate, type: vehicle.type);
+                      final rodizio = RodizioHelper.getInfo(
+                        vehicle.plate,
+                        type: vehicle.type,
+                        propulsion: vehicle.propulsion,
+                      );
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(
                           Icons.calendar_month,
-                          color: rodizio.isToday ? AppColors.warning : null,
+                          color: rodizio.isToday
+                              ? AppColors.warning
+                              : (vehicle.usesElectricPower ? AppColors.success : null),
                         ),
                         title: const Text('Rodízio Municipal'),
                         subtitle: Text(
@@ -666,8 +681,12 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                               ? 'Isento (Motocicleta)'
                               : '${rodizio.dayName} (${rodizio.timeRange})${rodizio.isToday ? ' • ATIVO HOJE!' : ''}',
                           style: TextStyle(
-                            color: rodizio.isToday ? AppColors.warning : null,
-                            fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
+                            color: rodizio.isToday
+                                ? AppColors.warning
+                                : (vehicle.usesElectricPower ? AppColors.success : null),
+                            fontWeight: (rodizio.isToday || vehicle.usesElectricPower)
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       );
@@ -677,14 +696,16 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.settings),
-                      title: const Text('Câmbio'),
+                      title: const Text('Câmbio / Transmissão'),
                       subtitle: Text(vehicle.transmission),
                     ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.local_gas_station),
-                    title: const Text('Capacidade do Tanque'),
-                    subtitle: Text('${formatNumber(vehicle.effectiveTankCapacity, 0)} Litros'),
+                    leading: Icon(vehicle.isElectric ? Icons.battery_charging_full : Icons.local_gas_station),
+                    title: Text(vehicle.isElectric ? 'Capacidade da Bateria' : 'Capacidade do Tanque'),
+                    subtitle: Text(
+                      '${formatNumber(vehicle.effectiveTankCapacity, vehicle.isElectric ? 1 : 0)} ${vehicle.capacityUnit}',
+                    ),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -994,7 +1015,10 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Abastecimento', style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                          Text(
+                            f.isElectric ? 'Recarga Elétrica ⚡' : 'Abastecimento',
+                            style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                          ),
                           if (v != null) Text(v.name, style: const TextStyle(color: Colors.grey)),
                         ],
                       ),
@@ -1008,14 +1032,19 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                 ),
                 const Divider(height: 24),
                 Text('Data: ${formatDate(f.date)}'),
-                Text('Combustível: ${f.fuelType}'),
-                if (f.gasStation.isNotEmpty) Text('Posto: ${f.gasStation}'),
+                Text('${f.isElectric ? "Fonte de Energia" : "Combustível"}: ${f.fuelType}'),
+                if (f.gasStation.isNotEmpty)
+                  Text('${f.isElectric ? "Eletroposto / Local" : "Posto"}: ${f.gasStation}'),
                 Text('Quilometragem: ${formatKm(f.km)}'),
-                Text('Volume: ${formatNumber(f.liters, 2)} ${f.unit}'),
+                Text('${f.isElectric ? "Energia Recarregada" : "Volume"}: ${formatNumber(f.liters, 2)} ${f.unit}'),
                 if (f.pricePerLiter > 0)
                   Text('Preço por ${f.unit}: ${formatMoney(f.pricePerLiter)}'),
                 Text('Total Pago: ${formatMoney(f.totalPrice)}'),
-                Text('Tanque Cheio: ${f.isFullTank ? "Sim" : "Não (Parcial)"}'),
+                Text(
+                  f.isElectric
+                      ? 'Carga 100% Completa: ${f.isFullTank ? "Sim" : "Não (Parcial)"}'
+                      : 'Tanque Cheio: ${f.isFullTank ? "Sim" : "Não (Parcial)"}',
+                ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
@@ -1038,14 +1067,16 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                         onPressed: () async {
                           final confirm = await confirmDialog(
                             sheetContext,
-                            title: 'Excluir Abastecimento',
-                            message: 'Deseja apagar este registro de abastecimento?',
+                            title: f.isElectric ? 'Excluir Recarga' : 'Excluir Abastecimento',
+                            message: f.isElectric
+                                ? 'Deseja apagar este registro de recarga elétrica?'
+                                : 'Deseja apagar este registro de abastecimento?',
                           );
                           if (confirm) {
                             await _fuelRepo.delete(f.id);
                             if (sheetContext.mounted) {
                               Navigator.pop(sheetContext);
-                              showMessage(context, 'Abastecimento excluído.');
+                              showMessage(context, f.isElectric ? 'Recarga excluída.' : 'Abastecimento excluído.');
                             }
                           }
                         },
@@ -1080,6 +1111,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
   final _fipe = FipeService();
 
   late VehicleType _type;
+  late VehiclePropulsion _propulsion;
   late final TextEditingController _brand;
   late final TextEditingController _model;
   late final TextEditingController _year;
@@ -1098,6 +1130,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     super.initState();
     final e = widget.existing;
     _type = e?.type ?? VehicleType.carro;
+    _propulsion = e?.propulsion ?? VehiclePropulsion.combustao;
     _brand = TextEditingController(text: e?.brand ?? '');
     _model = TextEditingController(text: e?.model ?? '');
     _year = TextEditingController(text: e?.year ?? '');
@@ -1106,7 +1139,11 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     _tankCapacity = TextEditingController(
       text: (e != null && e.tankCapacity > 0) ? '${e.tankCapacity}' : '',
     );
-    _transmission = (e != null && e.transmission.isNotEmpty) ? e.transmission : 'Manual';
+    _transmission = (e != null && e.transmission.isNotEmpty)
+        ? (e.transmission == 'Manual' || e.transmission == 'Automático'
+            ? e.transmission
+            : 'Automático')
+        : 'Manual';
     _plate.addListener(() => setState(() {}));
     _brand.addListener(() => setState(() {}));
     _loadFipeBrandsForType(_type, initialBrand: _brand.text);
@@ -1190,6 +1227,16 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     return set.toList();
   }
 
+  void _autoDetectPropulsion(String brand, String model) {
+    final inferred = Vehicle.inferirPropulsao(brand, model);
+    if (inferred != VehiclePropulsion.combustao) {
+      _propulsion = inferred;
+      if (inferred != VehiclePropulsion.combustao) {
+        _transmission = 'Automático';
+      }
+    }
+  }
+
   void _selectBrand(String brand) {
     final previousBrand = _brand.text.trim();
     setState(() {
@@ -1203,6 +1250,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
         }
         _fipeModels = [];
       }
+      _autoDetectPropulsion(brand, _model.text);
     });
     _loadFipeModelsForBrandName(brand);
   }
@@ -1217,6 +1265,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
           _loadFipeModelsForBrandName(detectedBrand);
         }
       }
+      _autoDetectPropulsion(_brand.text, model);
     });
   }
 
@@ -1227,7 +1276,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
       useSafeArea: true,
       builder: (ctx) => _SearchableListModal(
         title: 'Selecionar Marca (${_type.label})',
-        searchHint: 'Pesquisar marca (ex: Volkswagen, Honda...)',
+        searchHint: 'Pesquisar marca (ex: Volkswagen, Honda, BYD...)',
         items: _availableBrands,
         currentValue: _brand.text.trim(),
         emptyMessage: 'Nenhuma marca encontrada. Você pode usar o nome digitado.',
@@ -1253,7 +1302,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
             : null,
         searchHint: brandName.isNotEmpty
             ? 'Buscar modelo da $brandName...'
-            : 'Pesquisar modelo (ex: Gol, Onix, CG 160...)',
+            : 'Pesquisar modelo (ex: Gol, Dolphin, CG 160...)',
         items: _availableModelsForCurrentBrand,
         currentValue: _model.text.trim(),
         emptyMessage: 'Modelo não encontrado na lista. Toque abaixo para usar o nome digitado.',
@@ -1269,15 +1318,25 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     setState(() => _loading = true);
 
     try {
+      final String resolvedTransmission;
+      if (_type == VehicleType.moto) {
+        resolvedTransmission = '';
+      } else if (_propulsion == VehiclePropulsion.eletrico) {
+        resolvedTransmission = 'Redutor Direto (Elétrico)';
+      } else {
+        resolvedTransmission = _transmission;
+      }
+
       final vehicle = Vehicle(
         id: widget.existing?.id ?? '',
         type: _type,
+        propulsion: _propulsion,
         brand: _brand.text.trim(),
         model: _model.text.trim(),
         year: _year.text.trim(),
         plate: _plate.text.trim().toUpperCase(),
         currentKm: int.tryParse(_km.text.trim()) ?? 0,
-        transmission: _type == VehicleType.moto ? '' : _transmission,
+        transmission: resolvedTransmission,
         fipeCode: widget.existing?.fipeCode ?? '',
         fipeValue: widget.existing?.fipeValue ?? '',
         fipeReference: widget.existing?.fipeReference ?? '',
@@ -1316,6 +1375,8 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final popularBrands = CatalogoVeiculos.marcasPara(_type).take(8).toList();
     final modelsForBrand = _availableModelsForCurrentBrand;
+    final isElectric = _propulsion == VehiclePropulsion.eletrico;
+    final isHybrid = _propulsion == VehiclePropulsion.hibrido;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
@@ -1376,6 +1437,67 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   _loadFipeBrandsForType(nextType);
                 },
               ),
+              const SizedBox(height: 12),
+
+              // SELETOR DE MOTORIZAÇÃO (COMBUSTÃO / HÍBRIDO / 100% ELÉTRICO)
+              const Text(
+                'Motorização / Energia:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
+              const SizedBox(height: 6),
+              SegmentedButton<VehiclePropulsion>(
+                segments: const [
+                  ButtonSegment(
+                    value: VehiclePropulsion.combustao,
+                    label: Text('Combustão'),
+                    icon: Icon(Icons.local_gas_station, size: 18),
+                  ),
+                  ButtonSegment(
+                    value: VehiclePropulsion.hibrido,
+                    label: Text('Híbrido'),
+                    icon: Icon(Icons.electric_car, size: 18),
+                  ),
+                  ButtonSegment(
+                    value: VehiclePropulsion.eletrico,
+                    label: Text('Elétrico ⚡'),
+                    icon: Icon(Icons.bolt, size: 18),
+                  ),
+                ],
+                selected: {_propulsion},
+                onSelectionChanged: (set) {
+                  setState(() {
+                    _propulsion = set.first;
+                    if (_propulsion != VehiclePropulsion.combustao) {
+                      _transmission = 'Automático';
+                    }
+                  });
+                },
+              ),
+              if (isElectric || isHybrid) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.bolt, color: AppColors.success, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          isElectric
+                              ? 'Modo 100% Elétrico ativo: recargas em kWh, eficiência em km/kWh, catálogo de manutenção EV (sem óleo de motor/velas/correia) e isenção de rodízio.'
+                              : 'Modo Híbrido ativo: suporta Combustível (L) e Recarga Elétrica (kWh), alertas do sistema híbrido e isenção de rodízio.',
+                          style: const TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // CAMPO DE MARCA COM BOTÃO DE LISTA / BUSCA
@@ -1385,8 +1507,10 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   labelText: 'Marca',
                   prefixIcon: const Icon(Icons.business),
                   hintText: _type == VehicleType.caminhao
-                      ? 'Ex: Scania, Mercedes-Benz, Volvo'
-                      : (_type == VehicleType.moto ? 'Ex: Honda, Yamaha' : 'Ex: Volkswagen, Chevrolet'),
+                      ? 'Ex: Scania, Volvo, VW e-Delivery, BYD'
+                      : (_type == VehicleType.moto
+                          ? 'Ex: Honda, Yamaha, Voltz, Watts'
+                          : 'Ex: Volkswagen, BYD, GWM, Toyota'),
                   suffixIcon: TextButton.icon(
                     onPressed: _openBrandPickerModal,
                     icon: const Icon(Icons.search, size: 18),
@@ -1396,6 +1520,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                 validator: (v) => Validators.required(v, 'Marca'),
                 onChanged: (val) {
                   _loadFipeModelsForBrandName(val);
+                  setState(() => _autoDetectPropulsion(val, _model.text));
                 },
               ),
               const SizedBox(height: 6),
@@ -1441,8 +1566,10 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                         : (_type == VehicleType.moto ? Icons.two_wheeler : Icons.directions_car_filled),
                   ),
                   hintText: _type == VehicleType.caminhao
-                      ? 'Ex: FH 540, Actros'
-                      : (_type == VehicleType.moto ? 'Ex: CG 160 Titan, Fazer 250' : 'Ex: Gol, Onix, Corolla'),
+                      ? 'Ex: FH 540, e-Delivery, Actros'
+                      : (_type == VehicleType.moto
+                          ? 'Ex: CG 160 Titan, EVS, Fazer 250'
+                          : 'Ex: Gol, Dolphin, Corolla Hybrid'),
                   suffixIcon: TextButton.icon(
                     onPressed: _openModelPickerModal,
                     icon: _loadingFipeModels
@@ -1456,6 +1583,9 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   ),
                 ),
                 validator: (v) => Validators.required(v, 'Modelo'),
+                onChanged: (val) {
+                  setState(() => _autoDetectPropulsion(_brand.text, val));
+                },
               ),
               if (modelsForBrand.isNotEmpty) ...[
                 const SizedBox(height: 6),
@@ -1518,10 +1648,18 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               const SizedBox(height: 12),
               AppTextField(
                 controller: _tankCapacity,
-                label: 'Capacidade do Tanque (Litros - opcional)',
-                icon: Icons.local_gas_station,
+                label: isElectric
+                    ? 'Capacidade da Bateria (kWh - opcional)'
+                    : 'Capacidade do Tanque (Litros - opcional)',
+                icon: isElectric ? Icons.battery_charging_full : Icons.local_gas_station,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                hint: _type == VehicleType.caminhao ? 'Ex: 300' : (_type == VehicleType.moto ? 'Ex: 14' : 'Ex: 50'),
+                hint: isElectric
+                    ? (_type == VehicleType.caminhao
+                        ? 'Ex: 250 (kWh)'
+                        : (_type == VehicleType.moto ? 'Ex: 3.5 (kWh)' : 'Ex: 44.9 ou 60.5 (kWh)'))
+                    : (_type == VehicleType.caminhao
+                        ? 'Ex: 300'
+                        : (_type == VehicleType.moto ? 'Ex: 14' : 'Ex: 50')),
               ),
               const SizedBox(height: 12),
               AppTextField(
@@ -1532,13 +1670,44 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               ),
               if (_plate.text.trim().isNotEmpty) ...[
                 Builder(builder: (_) {
-                  final rodizio = RodizioHelper.getInfo(_plate.text.trim(), type: _type);
+                  final rodizio = RodizioHelper.getInfo(
+                    _plate.text.trim(),
+                    type: _type,
+                    propulsion: _propulsion,
+                  );
                   if (_type == VehicleType.moto) {
                     return const Padding(
                       padding: EdgeInsets.only(top: 6, left: 4),
                       child: Text(
                         '🏍️ Motocicletas são isentas do rodízio municipal.',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    );
+                  }
+                  if (isElectric || isHybrid) {
+                    return Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.eco, size: 18, color: AppColors.success),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Rodízio Municipal: ${rodizio.dayName} — ${rodizio.timeRange}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.success,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -1574,7 +1743,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   );
                 }),
               ],
-              if (_type != VehicleType.moto) ...[
+              if (_type != VehicleType.moto && !isElectric) ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _transmission,
@@ -2191,16 +2360,31 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     'Auto Posto Central',
   ];
 
+  static const List<String> _evStationSuggestions = [
+    'Wallbox Residencial',
+    'Tupinambá',
+    'Shell Recharge',
+    'Zletric',
+    'WeCharge',
+    'Volvo Recharge',
+    'Eletroposto Shopping',
+    'Carregador Portátil',
+  ];
+
   String _defaultFuelTypeForVehicle(Vehicle v) {
+    final allowed = FuelTypes.forVehicle(v);
+    if (v.isElectric) return FuelTypes.eletricidade;
     final lastRecord = widget.fuels.cast<FuelRecord?>().firstWhere(
           (f) => f != null && f.vehicleId == v.id,
           orElse: () => null,
         );
-    if (lastRecord != null && FuelTypes.all.contains(lastRecord.fuelType)) {
+    if (lastRecord != null && allowed.contains(lastRecord.fuelType)) {
       return lastRecord.fuelType;
     }
-    if (v.isTruck) return FuelTypes.diesel;
-    return FuelTypes.gasolina;
+    if (v.isTruck) {
+      return allowed.contains(FuelTypes.diesel) ? FuelTypes.diesel : allowed.first;
+    }
+    return allowed.first;
   }
 
   @override
@@ -2256,6 +2440,11 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
         _km.text = '${newVehicle.currentKm}';
         _selectedFuelType = _defaultFuelTypeForVehicle(newVehicle);
         _gasStation.clear();
+      } else {
+        final allowed = FuelTypes.forVehicle(newVehicle);
+        if (!allowed.contains(_selectedFuelType)) {
+          _selectedFuelType = _defaultFuelTypeForVehicle(newVehicle);
+        }
       }
     });
   }
@@ -2328,6 +2517,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
       final kmVal = int.tryParse(_km.text.trim()) ?? 0;
       final litersVal = parseNumber(_liters.text.trim()) ?? 0;
       final priceVal = parseNumber(_price.text.trim()) ?? 0;
+      final isEv = _selectedFuelType == FuelTypes.eletricidade;
 
       final record = FuelRecord(
         id: widget.existing?.id ?? '',
@@ -2353,17 +2543,18 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
 
       if (mounted) {
         Navigator.pop(context);
+        final actionWord = isEv ? 'Recarga elétrica salva' : 'Abastecimento salvo';
         if (kmUpdated) {
           showMessage(
             context,
-            'Abastecimento salvo e odômetro do ${vehicle.name} atualizado para ${formatKm(kmVal)}!',
+            '$actionWord e odômetro do ${vehicle.name} atualizado para ${formatKm(kmVal)}!',
           );
         } else {
-          showMessage(context, 'Abastecimento salvo com sucesso!');
+          showMessage(context, '$actionWord com sucesso!');
         }
       }
     } catch (e) {
-      if (mounted) showMessage(context, 'Erro ao salvar abastecimento: $e', error: true);
+      if (mounted) showMessage(context, 'Erro ao salvar registro: $e', error: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -2372,15 +2563,27 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final isGnv = _selectedFuelType == FuelTypes.gnv;
-    final unitLabel = isGnv ? 'm³' : 'L';
-    final volumeLabel = isGnv ? 'Volume (m³)' : 'Volume (L)';
-    final volumeName = isGnv ? 'Volume em m³' : 'Litros';
-
     final vehicle = widget.vehicles.firstWhere(
       (v) => v.id == _selectedVehicleId,
       orElse: () => widget.vehicles.first,
     );
+
+    final allowedFuels = <String>{
+      ...FuelTypes.forVehicle(vehicle),
+      if (widget.existing != null) widget.existing!.fuelType,
+    }.toList();
+    if (!allowedFuels.contains(_selectedFuelType)) {
+      _selectedFuelType = allowedFuels.first;
+    }
+
+    final isElectricFuel = _selectedFuelType == FuelTypes.eletricidade;
+    final isGnv = _selectedFuelType == FuelTypes.gnv;
+    final unitLabel = isElectricFuel ? 'kWh' : (isGnv ? 'm³' : 'L');
+    final volumeLabel = isElectricFuel ? 'Carga (kWh)' : (isGnv ? 'Volume (m³)' : 'Volume (L)');
+    final volumeName = isElectricFuel ? 'Energia em kWh' : (isGnv ? 'Volume em m³' : 'Litros');
+    final consumptionUnitLabel = isElectricFuel ? 'km/kWh' : (isGnv ? 'km/m³' : 'km/l');
+    final stationSuggestions = isElectricFuel ? _evStationSuggestions : _stationSuggestions;
+
     final currentVehicleKm = vehicle.currentKm;
     final enteredKm = int.tryParse(_km.text.trim()) ?? 0;
     final enteredVolume = parseNumber(_liters.text.trim()) ?? 0.0;
@@ -2412,7 +2615,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.existing == null ? 'Novo Abastecimento' : 'Editar Abastecimento',
+                      widget.existing == null
+                          ? (isElectricFuel ? 'Nova Recarga Elétrica ⚡' : 'Novo Abastecimento')
+                          : (isElectricFuel ? 'Editar Recarga Elétrica ⚡' : 'Editar Abastecimento'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -2427,9 +2632,21 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
               DropdownButtonFormField<String>(
                 key: ValueKey('fuel_vehicle_$_selectedVehicleId'),
                 initialValue: _selectedVehicleId,
-                decoration: const InputDecoration(labelText: 'Veículo', prefixIcon: Icon(Icons.directions_car)),
+                decoration: InputDecoration(
+                  labelText: 'Veículo',
+                  prefixIcon: Icon(
+                    vehicle.isTruck
+                        ? Icons.local_shipping
+                        : (vehicle.isMotorcycle ? Icons.two_wheeler : Icons.directions_car),
+                  ),
+                ),
                 items: widget.vehicles
-                    .map((v) => DropdownMenuItem(value: v.id, child: Text(v.name)))
+                    .map((v) => DropdownMenuItem(
+                          value: v.id,
+                          child: Text(
+                            '${v.name}${v.isElectric ? " (⚡ Elétrico)" : (v.isHybrid ? " (⚡ Híbrido)" : "")}',
+                          ),
+                        ))
                     .toList(),
                 onChanged: _onVehicleChanged,
               ),
@@ -2437,16 +2654,23 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
               DropdownButtonFormField<String>(
                 key: ValueKey('fuel_type_${_selectedVehicleId}_$_selectedFuelType'),
                 initialValue: _selectedFuelType,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de Combustível',
-                  prefixIcon: Icon(Icons.local_gas_station),
+                decoration: InputDecoration(
+                  labelText: vehicle.isElectric
+                      ? 'Fonte de Energia (Veículo 100% Elétrico)'
+                      : (vehicle.isHybrid ? 'Energia / Combustível (Híbrido)' : 'Tipo de Combustível'),
+                  prefixIcon: Icon(isElectricFuel ? Icons.ev_station : Icons.local_gas_station),
                 ),
-                items: FuelTypes.all
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                items: allowedFuels
+                    .map((t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t == FuelTypes.eletricidade ? '⚡ Eletricidade (kWh)' : t),
+                        ))
                     .toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedFuelType = val);
-                },
+                onChanged: allowedFuels.length <= 1
+                    ? null
+                    : (val) {
+                        if (val != null) setState(() => _selectedFuelType = val);
+                      },
               ),
               const SizedBox(height: 14),
 
@@ -2514,7 +2738,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 ),
               const SizedBox(height: 14),
 
-              // CHAVE DE TANQUE COMPLETO
+              // CHAVE DE TANQUE COMPLETO / CARGA 100% DA BATERIA
               Card(
                 elevation: 0,
                 color: Theme.of(context).brightness == Brightness.dark
@@ -2524,28 +2748,41 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
                     color: _isFullTank
-                        ? AppColors.goldenPollen.withValues(alpha: 0.4)
+                        ? (isElectricFuel ? AppColors.success : AppColors.goldenPollen).withValues(alpha: 0.4)
                         : Colors.grey.withValues(alpha: 0.25),
                   ),
                 ),
                 child: SwitchListTile(
                   value: _isFullTank,
-                  activeThumbColor: AppColors.goldenPollen,
+                  activeThumbColor: isElectricFuel ? AppColors.success : AppColors.goldenPollen,
                   title: Row(
                     children: [
                       Icon(
-                        _isFullTank ? Icons.local_gas_station : Icons.local_gas_station_outlined,
-                        color: _isFullTank ? AppColors.goldenPollen : Colors.grey,
+                        isElectricFuel
+                            ? (_isFullTank ? Icons.battery_charging_full : Icons.battery_4_bar)
+                            : (_isFullTank ? Icons.local_gas_station : Icons.local_gas_station_outlined),
+                        color: _isFullTank
+                            ? (isElectricFuel ? AppColors.success : AppColors.goldenPollen)
+                            : Colors.grey,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
-                      const Text('Tanque Completo (Cheio)?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Expanded(
+                        child: Text(
+                          isElectricFuel ? 'Carga Completa (100% da Bateria)?' : 'Tanque Completo (Cheio)?',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
                     ],
                   ),
                   subtitle: Text(
-                    _isFullTank
-                        ? 'Sim — Permite calcular com precisão o consumo real deste trecho.'
-                        : 'Não (Parcial) — Litros e km acumulam até o próximo tanque cheio.',
+                    isElectricFuel
+                        ? (_isFullTank
+                            ? 'Sim — Permite calcular com precisão a eficiência real (km/kWh) deste trecho.'
+                            : 'Não (Carga Parcial) — Os kWh e km acumulam até a próxima recarga de 100%.')
+                        : (_isFullTank
+                            ? 'Sim — Permite calcular com precisão o consumo real deste trecho.'
+                            : 'Não (Parcial) — Litros e km acumulam até o próximo tanque cheio.'),
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   onChanged: (val) => setState(() => _isFullTank = val),
@@ -2553,7 +2790,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
               ),
               const SizedBox(height: 14),
 
-              // CALCULADORA AUTOMÁTICA DE 3 CAMPOS (PREÇO/L, VOLUME, TOTAL R$)
+              // CALCULADORA AUTOMÁTICA DE 3 CAMPOS (PREÇO/UNIDADE, VOLUME/CARGA, TOTAL R$)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -2565,12 +2802,12 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: const [
-                        Icon(Icons.calculate, size: 18, color: AppColors.goldenPollen),
-                        SizedBox(width: 6),
+                      children: [
+                        const Icon(Icons.calculate, size: 18, color: AppColors.goldenPollen),
+                        const SizedBox(width: 6),
                         Text(
-                          'Calculadora Automática',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.goldenPollen),
+                          isElectricFuel ? 'Calculadora de Recarga (kWh)' : 'Calculadora Automática',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.goldenPollen),
                         ),
                       ],
                     ),
@@ -2632,15 +2869,15 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
               ),
               const SizedBox(height: 14),
 
-              // CAMPO DE POSTO COM AUTOCOMPLETE
+              // CAMPO DE POSTO / ELETROPOSTO COM AUTOCOMPLETE
               Autocomplete<String>(
-                key: ValueKey('fuel_station_$_selectedVehicleId'),
+                key: ValueKey('fuel_station_${_selectedVehicleId}_$isElectricFuel'),
                 initialValue: TextEditingValue(text: _gasStation.text),
                 optionsBuilder: (textEditingValue) {
                   if (textEditingValue.text.isEmpty) {
-                    return _stationSuggestions;
+                    return stationSuggestions;
                   }
-                  return _stationSuggestions.where((s) =>
+                  return stationSuggestions.where((s) =>
                       s.toLowerCase().contains(textEditingValue.text.toLowerCase()));
                 },
                 onSelected: (selection) => _gasStation.text = selection,
@@ -2650,10 +2887,14 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                     controller: controller,
                     focusNode: focusNode,
                     onEditingComplete: onEditingComplete,
-                    decoration: const InputDecoration(
-                      labelText: 'Posto de Combustível (opcional)',
-                      hintText: 'Ex: Shell, Ipiranga, Petrobras BR',
-                      prefixIcon: Icon(Icons.storefront),
+                    decoration: InputDecoration(
+                      labelText: isElectricFuel
+                          ? 'Eletroposto / Local de Recarga (opcional)'
+                          : 'Posto de Combustível (opcional)',
+                      hintText: isElectricFuel
+                          ? 'Ex: Wallbox Residencial, Tupinambá, Shell Recharge, Zletric'
+                          : 'Ex: Shell, Ipiranga, Petrobras BR',
+                      prefixIcon: Icon(isElectricFuel ? Icons.ev_station : Icons.storefront),
                     ),
                   );
                 },
@@ -2676,7 +2917,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                           const Icon(Icons.auto_awesome, size: 18, color: AppColors.goldenPollen),
                           const SizedBox(width: 8),
                           Text(
-                            'Resumo do Abastecimento',
+                            isElectricFuel ? 'Resumo da Recarga Elétrica' : 'Resumo do Abastecimento',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).brightness == Brightness.dark
@@ -2692,7 +2933,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                         style: const TextStyle(fontSize: 13),
                       ),
                       Text(
-                        '• Rendimento estimado deste abastecimento: ${formatNumber(tripConsumption, 1)} ${isGnv ? 'km/m³' : 'km/l'}',
+                        '• ${isElectricFuel ? "Eficiência estimada desta recarga" : "Rendimento estimado deste abastecimento"}: ${formatNumber(tripConsumption, 1)} $consumptionUnitLabel',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       const Text(
@@ -2730,7 +2971,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   Expanded(
                     flex: 2,
                     child: LoadingButton(
-                      label: 'Salvar Abastecimento',
+                      label: isElectricFuel ? 'Salvar Recarga' : 'Salvar Abastecimento',
                       loading: _loading,
                       onPressed: _save,
                     ),

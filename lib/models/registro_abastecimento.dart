@@ -1,20 +1,46 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Tipos de combustíveis suportados em português.
+import 'veiculo.dart';
+
+/// Tipos de combustíveis e fontes de energia suportados em português.
 class TiposCombustivel {
   static const String gasolina = 'Gasolina';
   static const String etanol = 'Etanol';
   static const String diesel = 'Diesel';
   static const String gnv = 'GNV';
+  static const String eletricidade = 'Eletricidade';
 
-  static const List<String> todos = [gasolina, etanol, diesel, gnv];
+  static const List<String> todos = [gasolina, etanol, diesel, gnv, eletricidade];
   static const List<String> all = todos;
+
+  static const List<String> combustao = [gasolina, etanol, diesel, gnv];
+  static const List<String> hibrido = [gasolina, etanol, eletricidade, diesel];
+  static const List<String> eletrico = [eletricidade];
+
+  /// Retorna os combustíveis/fontes de energia permitidos para o veículo.
+  static List<String> paraVeiculo(Veiculo veiculo) {
+    if (veiculo.eEletrico) {
+      return [eletricidade];
+    }
+    if (veiculo.eHibrido) {
+      if (veiculo.eCaminhao) return [diesel, eletricidade];
+      if (veiculo.eMoto) return [gasolina, etanol, eletricidade];
+      return [gasolina, etanol, eletricidade, diesel];
+    }
+    // Combustão
+    if (veiculo.eCaminhao) return [diesel, gasolina, etanol, gnv];
+    if (veiculo.eMoto) return [gasolina, etanol];
+    return [gasolina, etanol, diesel, gnv];
+  }
+
+  static List<String> forVehicle(Veiculo vehicle) => paraVeiculo(vehicle);
 }
 
 /// Alias para manter compatibilidade
 typedef FuelTypes = TiposCombustivel;
 
-/// Abastecimento em português. Usado para calcular o consumo médio (km/l ou km/m³) e os gastos.
+/// Abastecimento ou Recarga Elétrica em português.
+/// Usado para calcular o consumo médio (km/l, km/m³ ou km/kWh) e os gastos.
 /// Salvo em: users/{uid}/fuel/{id}
 class RegistroAbastecimento {
   final String id;
@@ -69,10 +95,23 @@ class RegistroAbastecimento {
   bool get eGnv => tipoCombustivel == TiposCombustivel.gnv;
   bool get isGnv => eGnv;
 
-  String get unidade => eGnv ? 'm³' : 'L';
+  bool get eEletrico => tipoCombustivel == TiposCombustivel.eletricidade;
+  bool get isElectric => eEletrico;
+
+  String get unidade {
+    if (eEletrico) return 'kWh';
+    if (eGnv) return 'm³';
+    return 'L';
+  }
+
   String get unit => unidade;
 
-  String get unidadeConsumo => eGnv ? 'km/m³' : 'km/l';
+  String get unidadeConsumo {
+    if (eEletrico) return 'km/kWh';
+    if (eGnv) return 'km/m³';
+    return 'km/l';
+  }
+
   String get consumptionUnit => unidadeConsumo;
 
   double get precoPorLitro => litros > 0 ? precoTotal / litros : 0;

@@ -71,12 +71,14 @@ class ItemAbastecimentoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = registro;
     final partePosto = r.postoCombustivel.trim().isNotEmpty ? ' ${r.postoCombustivel} • ' : '';
-    final etiquetaTanque = r.tanqueCheio ? 'Tanque Cheio' : 'Parcial';
+    final etiquetaTanque = r.eEletrico
+        ? (r.tanqueCheio ? 'Carga 100%' : 'Carga Parcial')
+        : (r.tanqueCheio ? 'Tanque Cheio' : 'Parcial');
 
     return Card(
       child: ListTile(
         onTap: aoTocar,
-        leading: const _CaixaIcone(Icons.local_gas_station),
+        leading: _CaixaIcone(r.eEletrico ? Icons.ev_station : Icons.local_gas_station),
         title: Text('${r.tipoCombustivel} • ${formatarNumero(r.litros, 2)} ${r.unidade} • ${formatarMoeda(r.precoPorLitro)}/${r.unidade}'),
         subtitle: Text('$partePosto${formatarData(r.data)} • ${formatarKm(r.km)} • $etiquetaTanque'),
         trailing: Text(formatarMoeda(r.precoTotal),

@@ -126,6 +126,7 @@ class _LembretesVeiculoSheetState extends State<LembretesVeiculoSheet> {
                 final updated = Vehicle(
                   id: _vehicle.id,
                   type: _vehicle.type,
+                  propulsion: _vehicle.propulsion,
                   brand: _vehicle.brand,
                   model: _vehicle.model,
                   year: _vehicle.year,
@@ -199,7 +200,7 @@ class _LembretesVeiculoSheetState extends State<LembretesVeiculoSheet> {
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     Text(
-                      '${_vehicle.name} • Placa ${_vehicle.plate.isNotEmpty ? _vehicle.plate.toUpperCase() : '--'}',
+                      '${_vehicle.name} (${_vehicle.propulsion.shortLabel}) • Placa ${_vehicle.plate.isNotEmpty ? _vehicle.plate.toUpperCase() : '--'}',
                       style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                     ),
                   ],
@@ -223,7 +224,7 @@ class _LembretesVeiculoSheetState extends State<LembretesVeiculoSheet> {
                   title: 'IPVA (Imposto sobre Veículos)',
                   subtitle: 'Vencimento em ${ipva.monthName}',
                   statusBadge: _buildBadge(
-                    label: ipva.isPaid ? 'PAGO' : (ipva.isOverdue ? 'ATRASADO' : 'PENDENTE'),
+                    label: ipva.isPaid ? 'PAGO / ISENTO' : (ipva.isOverdue ? 'ATRASADO' : 'PENDENTE'),
                     color: ipva.isPaid
                         ? AppColors.success
                         : (ipva.isOverdue ? AppColors.danger : AppColors.warning),
@@ -238,21 +239,29 @@ class _LembretesVeiculoSheetState extends State<LembretesVeiculoSheet> {
                         ),
                       Text(
                         ipva.isPaid
-                            ? 'O IPVA deste ano já foi marcado como quitado.'
+                            ? 'O IPVA deste ano já foi marcado como quitado/isento.'
                             : 'Fique atento ao calendário para evitar juros e multas.',
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
+                      if (_vehicle.usesElectricPower) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          '⚡ Dica EV/Híbrido: diversos estados e capitais oferecem isenção total ou restituição de quota-parte do IPVA para veículos elétricos e híbridos.',
+                          style: const TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ],
                   ),
                   actionButton: TextButton.icon(
                     icon: Icon(ipva.isPaid ? Icons.undo : Icons.check_circle_outline),
-                    label: Text(ipva.isPaid ? 'Desmarcar' : 'Marcar como Pago'),
+                    label: Text(ipva.isPaid ? 'Desmarcar' : 'Marcar como Pago / Isento'),
                     onPressed: _loading
                         ? null
                         : () {
                             final updated = Vehicle(
                               id: _vehicle.id,
                               type: _vehicle.type,
+                              propulsion: _vehicle.propulsion,
                               brand: _vehicle.brand,
                               model: _vehicle.model,
                               year: _vehicle.year,
@@ -312,6 +321,7 @@ class _LembretesVeiculoSheetState extends State<LembretesVeiculoSheet> {
                             final updated = Vehicle(
                               id: _vehicle.id,
                               type: _vehicle.type,
+                              propulsion: _vehicle.propulsion,
                               brand: _vehicle.brand,
                               model: _vehicle.model,
                               year: _vehicle.year,
@@ -463,6 +473,7 @@ class _LembretesVeiculoSheetState extends State<LembretesVeiculoSheet> {
                             final updated = Vehicle(
                               id: _vehicle.id,
                               type: _vehicle.type,
+                              propulsion: _vehicle.propulsion,
                               brand: _vehicle.brand,
                               model: _vehicle.model,
                               year: _vehicle.year,

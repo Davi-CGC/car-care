@@ -58,13 +58,26 @@ class _TelaManualState extends State<TelaManual> {
     ),
     _FaqItem(
       category: 'Veículos & Rodízio',
+      icon: Icons.bolt,
+      question: 'Como funciona o suporte para Carros, Motos e Caminhões Elétricos ou Híbridos?',
+      answer:
+          'Ao cadastrar ou editar um veículo, você pode selecionar a motorização entre "Combustão", "Híbrido" ou "100% Elétrico ⚡" '
+          '(além disso, ao escolher marcas/modelos conhecidos como BYD, Tesla, Voltz, Watts, GWM Haval ou VW e-Delivery, o app detecta a propulsão automaticamente!).\n'
+          'Quando o veículo é 100% Elétrico, o app adapta tudo:\n'
+          '• Recargas exclusivamente em Eletricidade (kWh) e eficiência medida em km/kWh (sem opções de Gasolina, Etanol ou GNV).\n'
+          '• Capacidade da bateria em kWh e sugestões de Eletropostos (Tupinambá, Shell Recharge, Zletric, Wallbox).\n'
+          '• Catálogo de manutenção exclusivo para veículos elétricos (bateria de alta tensão, arrefecimento do inversor, óleo do redutor EV, freios regenerativos), ocultando itens de motor a combustão (óleo de motor, velas, correia dentada, escapamento).\n'
+          '• Isenção ambiental automática no Rodízio Municipal.',
+    ),
+    _FaqItem(
+      category: 'Veículos & Rodízio',
       icon: Icons.calendar_month,
       question: 'Como o app avisa o dia do meu rodízio veicular?',
       answer:
           'O CarCare lê o último número da placa informada (padrão antigo ou Mercosul) e calcula o dia '
           'da restrição de trânsito (ex: finais 1 e 2 na segunda-feira, 3 e 4 na terça, etc.). '
           'Se hoje for o dia do rodízio do seu carro, um banner amarelo em destaque surge no topo da tela inicial. '
-          'Motocicletas são identificadas automaticamente como isentas de rodízio.',
+          'Motocicletas e veículos Elétricos/Híbridos são identificados automaticamente como isentos do rodízio municipal.',
     ),
     _FaqItem(
       category: 'Veículos & Rodízio',

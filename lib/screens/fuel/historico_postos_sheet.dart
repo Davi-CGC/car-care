@@ -194,7 +194,7 @@ class HistoricoPostosSheet extends StatelessWidget {
                                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                               ),
                               Text(
-                                'Volume: ${formatNumber(item.totalVolume, 1)} L/m³',
+                                'Total: ${formatNumber(item.totalVolume, 1)} L/m³/kWh',
                                 style: const TextStyle(fontSize: 12, color: Colors.grey),
                               ),
                             ],
@@ -202,7 +202,7 @@ class HistoricoPostosSheet extends StatelessWidget {
                           if (item.latestPriceByFuel.isNotEmpty) ...[
                             const SizedBox(height: 10),
                             const Text(
-                              'Últimos preços registrados neste posto:',
+                              'Últimos preços registrados neste local:',
                               style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 6),
@@ -210,7 +210,9 @@ class HistoricoPostosSheet extends StatelessWidget {
                               spacing: 8,
                               runSpacing: 6,
                               children: item.latestPriceByFuel.entries.map((entry) {
-                                final unit = entry.key == FuelTypes.gnv ? 'm³' : 'L';
+                                final unit = entry.key == FuelTypes.eletricidade
+                                    ? 'kWh'
+                                    : (entry.key == FuelTypes.gnv ? 'm³' : 'L');
                                 return Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(

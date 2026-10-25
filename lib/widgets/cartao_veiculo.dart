@@ -59,11 +59,52 @@ class CartaoVeiculo extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(veiculo.nome,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: tema.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            veiculo.nome,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: tema.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        if (veiculo.usaEnergiaEletrica) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (veiculo.eEletrico ? Colors.green : Colors.teal)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: (veiculo.eEletrico ? Colors.green : Colors.teal)
+                                    .withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.bolt,
+                                  size: 12,
+                                  color: veiculo.eEletrico ? Colors.green[600] : Colors.teal[600],
+                                ),
+                                Text(
+                                  veiculo.propulsao.rotuloCurto,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: veiculo.eEletrico ? Colors.green[600] : Colors.teal[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 2),
                     Text(detalhes, maxLines: 1, overflow: TextOverflow.ellipsis),
                     if (veiculo.valorFipe.isNotEmpty)
@@ -72,11 +113,21 @@ class CartaoVeiculo extends StatelessWidget {
                     if (veiculo.placa.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Builder(builder: (_) {
-                        final rodizio = AuxiliarRodizio.obterInformacoes(veiculo.placa, tipo: veiculo.tipo);
-                        if (veiculo.eMoto) {
-                          return const Text(
-                            'Isento de rodízio',
-                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                        final rodizio = AuxiliarRodizio.obterInformacoes(
+                          veiculo.placa,
+                          tipo: veiculo.tipo,
+                          propulsao: veiculo.propulsao,
+                        );
+                        if (rodizio.eIsento) {
+                          return Text(
+                            veiculo.eMoto
+                                ? 'Isento de rodízio'
+                                : '⚡ ${rodizio.nomeDia} de rodízio',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: veiculo.usaEnergiaEletrica ? Colors.green[600] : Colors.grey,
+                              fontWeight: veiculo.usaEnergiaEletrica ? FontWeight.w600 : FontWeight.normal,
+                            ),
                           );
                         }
                         return Container(

@@ -9,7 +9,6 @@ import '../../utils/calculos.dart';
 import '../../utils/formatadores.dart';
 import '../../widgets/estado_vazio.dart';
 import '../../widgets/layout.dart';
-import '../../widgets/termometro_consumo.dart';
 
 enum PeriodFilter { semana, mes, ano }
 enum VehicleTypeFilter { todos, carros, motos, caminhoes }
@@ -293,7 +292,7 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                           style: TextStyle(color: Colors.grey)),
                     )
                   else ...[
-                    // Itens de combustível
+                    // Itens de combustível / recarga
                     ...selectedBar.fuels.map((f) {
                       final v = widget.vehicles.cast<Vehicle?>().firstWhere(
                             (x) => x?.id == f.vehicleId,
@@ -302,12 +301,17 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                       return ListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        leading: const CircleAvatar(
+                        leading: CircleAvatar(
                           radius: 14,
-                          backgroundColor: AppColors.goldenPollen,
-                          child: Icon(Icons.local_gas_station, size: 14, color: AppColors.obsidian),
+                          backgroundColor: f.isElectric ? Colors.green[600] : AppColors.goldenPollen,
+                          child: Icon(
+                            f.isElectric ? Icons.ev_station : Icons.local_gas_station,
+                            size: 14,
+                            color: f.isElectric ? Colors.white : AppColors.obsidian,
+                          ),
                         ),
-                        title: Text('Abastecimento • ${f.fuelType} (${v?.name ?? 'Veículo'})'),
+                        title: Text(
+                            '${f.isElectric ? 'Recarga' : 'Abastecimento'} • ${f.fuelType} (${v?.name ?? 'Veículo'})'),
                         subtitle: Text(
                             '${formatDate(f.date)} • ${formatNumber(f.liters, 2)} ${f.unit} • ${formatKm(f.km)}'),
                         trailing: Text(
@@ -346,9 +350,9 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
           const SizedBox(height: 20),
         ],
 
-        // Tabela / Cards de Consumo de Combustível dos Veículos
+        // Tabela / Cards de Consumo de Combustível e Energia dos Veículos
         SectionTitle(
-          'Consumo de Combustível dos Veículos',
+          'Consumo e Eficiência dos Veículos',
           trailing: Text('${filteredVehicles.length} veículo(s)',
               style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ),
@@ -358,6 +362,9 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
           final lastFuel = vFuels.isNotEmpty ? vFuels.first : null;
           final totalFuelPrice = Calculations.fuelTotal(vFuels);
           final totalFuelVol = vFuels.fold<double>(0, (sum, f) => sum + f.liters);
+          final defaultFuelLabel = v.isElectric ? FuelTypes.eletricidade : 'Gasolina';
+          final unitLabel = lastFuel?.unit ?? (v.isElectric ? 'kWh' : 'L');
+          final consUnitLabel = lastFuel?.consumptionUnit ?? v.defaultConsumptionUnit;
 
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -379,6 +386,23 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                       ),
+                      if (v.usesElectricPower)
+                        Container(
+                          margin: const EdgeInsets.only(right: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (v.isElectric ? Colors.green : Colors.teal).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '⚡ ${v.propulsion.shortLabel}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: v.isElectric ? Colors.green[600] : Colors.teal[600],
+                            ),
+                          ),
+                        ),
                       if (v.plate.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -398,52 +422,41 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Combustível: ${lastFuel?.fuelType ?? 'Gasolina'}',
+                        '${v.isElectric ? 'Energia' : 'Combustível'}: ${lastFuel?.fuelType ?? defaultFuelLabel}',
                         style: const TextStyle(fontSize: 12),
                       ),
                       Text(
-                        'Total: ${formatMoney(totalFuelPrice)} (${formatNumber(totalFuelVol, 1)} ${lastFuel?.unit ?? 'L'})',
+                        'Total: ${formatMoney(totalFuelPrice)} (${formatNumber(totalFuelVol, 1)} $unitLabel)',
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
-                  Builder(
-                    builder: (_) {
-                      final dailyKm = Calculations.dailyAverageDistance(vFuels);
-                      if (dailyKm <= 0) return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'Média Diária: ${formatNumber(dailyKm, 1)} km/dia',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        avg != null
+                            ? 'Média: ${formatNumber(avg, 1)} $consUnitLabel'
+                            : 'Média: aguarda 2+ registros',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: avg != null ? AppColors.goldenPollen : Colors.grey,
                         ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  if (avg != null) ...[
-                    Builder(
-                      builder: (_) {
-                        final eval = Calculations.evaluateConsumption(
-                          avg,
-                          vehicleType: v.type,
-                          fuelType: lastFuel?.fuelType ?? FuelTypes.gasolina,
-                        );
-                        if (eval == null) return const SizedBox.shrink();
-                        return ConsumptionThermometer(
-                          evaluation: eval,
-                          unit: lastFuel?.unit == 'm³' ? 'km/m³' : 'km/l',
-                        );
-                      },
-                    ),
-                  ] else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        'Registre pelo menos 2 abastecimentos para calcular a média de consumo deste veículo.',
-                        style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                       ),
-                    ),
+                      Builder(
+                        builder: (_) {
+                          final dailyKm = Calculations.dailyAverageDistance(vFuels);
+                          if (dailyKm <= 0) return const SizedBox.shrink();
+                          return Text(
+                            'Média Diária: ${formatNumber(dailyKm, 1)} km/dia',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

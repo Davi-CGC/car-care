@@ -246,8 +246,8 @@ cd carcare</code></pre>
             </tr>
             <tr>
               <td><code>users/{uid}/vehicles/{id}</code></td>
-              <td><code>type ('carro'|'moto'|'caminhao'), brand, model, year, plate, currentKm, transmission, tankCapacity, ipvaDueMonth, ipvaPaid, ipvaAmount, licensingPaid, insuranceCompany, insurancePolicy, insurancePhone, insuranceExpiryDate, lastTireRotationKm, tireRotationIntervalKm, fipeCode, fipeValue, fipeReference, createdAt</code></td>
-              <td>Carros, motocicletas e caminhões do usuário com controle de documentos e pneus.</td>
+              <td><code>type ('carro'|'moto'|'caminhao'), propulsion ('combustao'|'hibrido'|'eletrico'), brand, model, year, plate, currentKm, transmission, tankCapacity, ipvaDueMonth, ipvaPaid, ipvaAmount, licensingPaid, insuranceCompany, insurancePolicy, insurancePhone, insuranceExpiryDate, lastTireRotationKm, tireRotationIntervalKm, fipeCode, fipeValue, fipeReference, createdAt</code></td>
+              <td>Carros, motocicletas e caminhões (Combustão, Híbridos e 100% Elétricos) com controle de documentos e pneus.</td>
             </tr>
             <tr>
               <td><code>users/{uid}/maintenances/{id}</code></td>
@@ -256,8 +256,8 @@ cd carcare</code></pre>
             </tr>
             <tr>
               <td><code>users/{uid}/fuel/{id}</code></td>
-              <td><code>vehicleId, fuelType ('Gasolina'|'Etanol'|'Diesel'|'GNV'), date, km, liters, pricePerLiter, totalPrice, isFullTank (bool), gasStation (string), createdAt</code></td>
-              <td>Abastecimentos completos com posto, preço unitário, tanque cheio/parcial, calculadora e rotina.</td>
+              <td><code>vehicleId, fuelType ('Gasolina'|'Etanol'|'Diesel'|'GNV'|'Eletricidade'), date, km, liters, pricePerLiter, totalPrice, isFullTank (bool), gasStation (string), createdAt</code></td>
+              <td>Abastecimentos e recargas elétricas (kWh) com posto/eletroposto, preço unitário, tanque/carga cheia, calculadora e rotina.</td>
             </tr>
           </tbody>
         </table>
@@ -295,19 +295,27 @@ service cloud.firestore {
         <h2>12. Tela Principal (Home) e as 5 Abas</h2>
         <p>O aplicativo organiza toda a experiência em 5 abas integradas:</p>
         <ol>
-          <li><strong>Início (Visão Geral):</strong> cartões de resumo (veículos, gastos no mês, alertas de serviços ativos, consumo médio geral, <strong>média diária de distância</strong>), termômetro visual, <strong>radar de serviços automotivos próximos via Google Maps</strong> e <strong>banner de alerta se hoje for dia de rodízio</strong>.</li>
-          <li><strong>Veículos:</strong> listagem de carros, motos e <strong>caminhões</strong> com odômetro, placa, valor FIPE, chip de rodízio, botão de <strong>Lembretes &amp; Documentos (IPVA, Licenciamento, Seguro, Pneus)</strong> e acesso ao Diário de Bordo.</li>
-          <li><strong>Manutenções:</strong> histórico de revisões com odômetro anterior visível, filtro por veículo, badge de status e botão para <strong>Editar</strong> ou Excluir.</li>
-          <li><strong>Abastecimentos:</strong> histórico com <strong>Card de Rotina de Abastecimento</strong>, botão para o <strong>Histórico de Postos Frequentados</strong>, calculadora automática de 3 campos, opção de <strong>Tanque Cheio vs Parcial</strong> e botão para <strong>Editar</strong> ou Excluir.</li>
-          <li><strong>Relatórios:</strong> gráficos de colunas interativos por Semana, Mês ou Ano, filtro por Carros, Motos e Caminhões, detalhamento clicável de custos e consumo médio com média diária de km.</li>
+          <li><strong>Início (Visão Geral):</strong> cartões de resumo (veículos, gastos no mês, alertas de serviços ativos, consumo médio geral, <strong>média diária de distância</strong>), <strong>radar de serviços automotivos e eletropostos próximos via Google Maps</strong> e <strong>banner de alerta se hoje for dia de rodízio</strong>.</li>
+          <li><strong>Veículos:</strong> listagem de carros, motos e <strong>caminhões</strong> (Combustão, Híbridos e 100% Elétricos) com odômetro, placa, valor FIPE, chip de rodízio, botão de <strong>Lembretes &amp; Documentos (IPVA, Licenciamento, Seguro, Pneus)</strong> e acesso ao Diário de Bordo &amp; Termômetro.</li>
+          <li><strong>Manutenções:</strong> histórico de revisões com catálogo inteligente adaptado para Combustão, Híbrido ou 100% Elétrico, odômetro anterior visível, filtro por veículo e botão para <strong>Editar</strong> ou Excluir.</li>
+          <li><strong>Abastecimentos / Recargas:</strong> histórico com <strong>Card de Rotina de Abastecimento / Recarga Elétrica</strong>, botão para o <strong>Histórico de Postos e Eletropostos</strong>, calculadora automática de 3 campos (L, m³ ou kWh), opção de <strong>Tanque Cheio / Carga 100%</strong> e botão para <strong>Editar</strong> ou Excluir.</li>
+          <li><strong>Relatórios:</strong> gráficos de colunas interativos por Semana, Mês ou Ano, filtro por Carros, Motos e Caminhões, detalhamento clicável de custos e consumo médio (km/l, km/m³ ou km/kWh) com média diária de km.</li>
         </ol>
       </section>
 
       <!-- 13. Veículos, FIPE & Rodízio -->
       <section id="crud-veiculos">
-        <h2>13. Gestão de Veículos, Caminhões, FIPE &amp; Rodízio Municipal</h2>
+        <h2>13. Gestão de Veículos, Elétricos/Híbridos, Caminhões, FIPE &amp; Rodízio</h2>
+        <h3>Suporte Completo a Carros, Motos e Caminhões Elétricos (EV) e Híbridos</h3>
+        <p>O CarCare adapta toda a sua interface e regras de negócio conforme a propulsão do veículo (<code>Combustão</code>, <code>Híbrido</code> ou <code>100% Elétrico ⚡</code>), com detecção automática ao escolher marcas e modelos conhecidos (BYD, Tesla, Voltz, Watts, GWM, Volvo Electric, VW e-Delivery):</p>
+        <ul>
+          <li><strong>100% Elétrico:</strong> oculta combustíveis fósseis (Gasolina, Etanol, Diesel, GNV) e opera exclusivamente com <strong>Eletricidade (kWh)</strong>, calcula eficiência em <strong>km/kWh</strong>, mede capacidade da bateria em <strong>kWh</strong>, sugere Eletropostos e exibe apenas itens de manutenção de veículos elétricos (bateria de alta tensão SOH, arrefecimento do inversor/bateria, óleo da transmissão redutora EV, freios regenerativos), sem exibir óleo de motor, velas, correia dentada ou escapamento.</li>
+          <li><strong>Híbrido (HEV / PHEV):</strong> permite registrar tanto abastecimentos líquidos (Gasolina/Etanol/Diesel) quanto recargas elétricas (kWh), adiciona itens de revisão do sistema híbrido ao catálogo e calibra o termômetro de consumo para médias híbridas.</li>
+          <li><strong>Isenção Ambiental de Rodízio:</strong> veículos Elétricos e Híbridos são automaticamente marcados como <strong>Isentos do Rodízio Municipal</strong>.</li>
+        </ul>
+
         <h3>Suporte Completo a Caminhões</h3>
-        <p>O sistema suporta oficialmente <strong>Carros</strong>, <strong>Motos</strong> e <strong>Caminhões</strong>. Para caminhões, o CarCare consulta a Tabela FIPE no endpoint <code>/caminhoes</code>, adota regras de rodízio ZMRC (Zona de Máxima Restrição de Circulação em SP das 05h às 21h em dias úteis) e calibra o termômetro de consumo para médias de diesel pesado (2.0 a 4.5 km/l).</p>
+        <p>O sistema suporta oficialmente <strong>Carros</strong>, <strong>Motos</strong> e <strong>Caminhões</strong>. Para caminhões, o CarCare consulta a Tabela FIPE no endpoint <code>/caminhoes</code>, adota regras de rodízio ZMRC (Zona de Máxima Restrição de Circulação em SP das 05h às 21h em dias úteis) e calibra o termômetro de consumo para médias de diesel pesado (2.0 a 4.5 km/l) ou caminhões elétricos (km/kWh).</p>
 
         <h3>Alerta Automático de Rodízio por Placa</h3>
         <p>O utilitário <code>RodizioHelper</code> lê o último dígito numérico da placa (funciona tanto no padrão tradicional <code>ABC-1234</code> quanto no Mercosul <code>ABC1D23</code>):</p>
@@ -317,14 +325,14 @@ service cloud.firestore {
           <li><strong>Finais 5 e 6:</strong> Quarta-feira</li>
           <li><strong>Finais 7 e 8:</strong> Quinta-feira</li>
           <li><strong>Finais 9 e 0:</strong> Sexta-feira</li>
-          <li><strong>Motocicletas:</strong> Isentas de rodízio municipal.</li>
-          <li><strong>Caminhões:</strong> Sujeitos ao rodízio de caminhões/ZMRC (05h às 21h).</li>
+          <li><strong>Motocicletas e Veículos Elétricos/Híbridos:</strong> Isentos de rodízio municipal.</li>
+          <li><strong>Caminhões a Combustão:</strong> Sujeitos ao rodízio de caminhões/ZMRC (05h às 21h).</li>
         </ul>
 
         <h3>Lembretes de IPVA, Licenciamento, Seguro &amp; Rodízio de Pneus</h3>
         <p>Acessível em cada veículo pelo botão <strong>Lembretes: IPVA, Licenciamento, Seguro &amp; Pneus</strong>:</p>
         <ul>
-          <li><strong>IPVA:</strong> Mês de vencimento pelo final da placa, valor estimado com base na Tabela FIPE (4% carros, 2% motos, 1.5% caminhões) e botão de marcar como pago.</li>
+          <li><strong>IPVA:</strong> Mês de vencimento pelo final da placa, valor estimado com base na Tabela FIPE (4% carros, 2% motos, 1.5% caminhões) e botão de marcar como pago/isento.</li>
           <li><strong>Licenciamento:</strong> Calendário oficial do Detran por final de placa com alertas de mês de vencimento.</li>
           <li><strong>Seguro do Veículo:</strong> Nome da seguradora, número de apólice, botão com ligação direta para assistência 24h/guincho e contagem regressiva de renovação.</li>
           <li><strong>Rodízio de Pneus:</strong> Quilometragem do último rodízio, intervalo recomendado (10.000 km), km restantes e barra de progresso visual de desgaste com botão de registro em 1 clique.</li>
@@ -340,25 +348,25 @@ service cloud.firestore {
 
       <!-- 15. Abastecimento, Calculadora, Tanque Cheio & Rotina -->
       <section id="crud-abastecimentos">
-        <h2>15. Abastecimento, Calculadora Dinâmica, Tanque Cheio &amp; Rotina</h2>
+        <h2>15. Abastecimento / Recarga EV, Calculadora Dinâmica, Tanque Cheio &amp; Rotina</h2>
         <ul>
-          <li><strong>Calculadora Automática de 3 Campos:</strong> Conecta <em>Preço por Litro/m³</em>, <em>Volume (Litros ou m³)</em> e <em>Valor Total (R$)</em>. Ao preencher 2 campos quaisquer, o 3º calcula instantaneamente sem necessidade de contas manuais.</li>
-          <li><strong>Odômetro Anterior em Destaque:</strong> Exibe o último odômetro registrado e mostra um badge verde de quantos quilômetros foram rodados neste abastecimento.</li>
-          <li><strong>Tanque Cheio vs Parcial:</strong> Chave seletora que define se o tanque foi completado. Abastecimentos com tanque cheio utilizam o método científico oficial para calcular o consumo exato daquele ciclo (km rodados ÷ litros consumidos).</li>
-          <li><strong>Histórico de Postos Frequentados:</strong> Registra a bandeira/nome do posto (Shell, Ipiranga, BR, etc.), histórico de preços pagos e rota no Google Maps com 1 clique.</li>
-          <li><strong>Card de Rotina de Abastecimento:</strong> Painel estatístico completo exibindo <em>distância média entre abastecimentos</em>, <em>frequência em dias</em>, <em>autonomia estimada com tanque cheio</em>, <em>projeção mensal de gastos</em> e a proporção de abastecimentos com tanque cheio.</li>
-          <li><strong>Radar de Serviços Próximos (Google Maps):</strong> Botão de bússola no topo do app que abre buscas automáticas por postos de combustível, mecânicas, borracharias, autoelétricas e guinchos 24h na localização do usuário.</li>
+          <li><strong>Calculadora Automática de 3 Campos:</strong> Conecta <em>Preço por Litro/m³/kWh</em>, <em>Volume/Carga (Litros, m³ ou kWh)</em> e <em>Valor Total (R$)</em>. Ao preencher 2 campos quaisquer, o 3º calcula instantaneamente sem necessidade de contas manuais.</li>
+          <li><strong>Odômetro Anterior em Destaque:</strong> Exibe o último odômetro registrado e mostra um badge verde de quantos quilômetros foram rodados neste abastecimento/recarga.</li>
+          <li><strong>Tanque Cheio / Carga 100% vs Parcial:</strong> Chave seletora que define se o tanque ou bateria foi completado(a) até 100%. Utiliza o método oficial para calcular o consumo exato daquele ciclo (km/l, km/m³ ou km/kWh).</li>
+          <li><strong>Histórico de Postos e Eletropostos:</strong> Registra a bandeira/nome do posto ou eletroposto (Shell, Ipiranga, Tupinambá, Zletric, Wallbox, etc.), histórico de preços pagos e rota no Google Maps com 1 clique.</li>
+          <li><strong>Card de Rotina de Abastecimento / Recarga:</strong> Painel estatístico completo exibindo <em>distância média entre paradas</em>, <em>frequência em dias</em>, <em>autonomia estimada com 100% de tanque/bateria</em>, <em>projeção mensal de gastos</em> e a proporção de tanques/cargas completas.</li>
+          <li><strong>Radar de Serviços Próximos (Google Maps):</strong> Botão de bússola no topo do app que abre buscas automáticas por postos de combustível, eletropostos EV, mecânicas, borracharias, autoelétricas e guinchos 24h na localização do usuário.</li>
         </ul>
       </section>
 
       <!-- 16. Termômetro de Consumo -->
       <section id="termometro-consumo">
         <h2>16. Termômetro Visual de Eficiência de Consumo (no Log do Veículo)</h2>
-        <p>O widget <code>TermometroConsumo</code> fica localizado exclusivamente dentro do <strong>Diário de Bordo (Log do Veículo)</strong> de cada carro, moto ou caminhão, garantindo que cada veículo tenha seu próprio termômetro individual sem misturar médias. Ele classifica visualmente o consumo médio através de uma barra de 3 estágios com indicador dinâmico:</p>
+        <p>O widget <code>TermometroConsumo</code> fica localizado exclusivamente dentro do <strong>Diário de Bordo (Log do Veículo)</strong> de cada carro, moto ou caminhão, garantindo que cada veículo tenha seu próprio termômetro individual sem misturar médias (e calibrado para Combustão em <code>km/l</code>, GNV em <code>km/m³</code>, Híbridos e Elétricos em <code>km/kWh</code>):</p>
         <ul>
-          <li><strong style="color: #10b981;">Verde (Muito Econômico):</strong> Alta autonomia por litro/m³.</li>
-          <li><strong style="color: #f59e0b;">Amarelo (Normal / Moderado):</strong> Consumo padrão esperado para a categoria.</li>
-          <li><strong style="color: #ef4444;">Vermelho (Alto Consumo):</strong> Gasto elevado de combustível. Alerta o motorista para checar calibragem dos pneus, alinhamento, filtros e velas.</li>
+          <li><strong style="color: #10b981;">Verde (Muito Econômico):</strong> Alta autonomia por litro, m³ ou kWh.</li>
+          <li><strong style="color: #f59e0b;">Amarelo (Normal / Moderado):</strong> Consumo padrão esperado para a categoria e motorização.</li>
+          <li><strong style="color: #ef4444;">Vermelho (Alto Consumo):</strong> Gasto elevado de combustível/energia. Alerta o motorista para checar calibragem dos pneus, alinhamento ou diagnóstico do sistema.</li>
         </ul>
       </section>
 
@@ -368,16 +376,16 @@ service cloud.firestore {
         <p>Localizado na aba <strong>Relatórios</strong>:</p>
         <ul>
           <li><strong>Gráficos por Período:</strong> escolha visualizar gastos por <em>Semana</em> (dias de Seg a Dom), <em>Mês</em> (4 semanas do mês atual) ou <em>Ano</em> (12 meses).</li>
-          <li><strong>Colunas Coloridas:</strong> divisão proporcional e empilhada entre gastos de <strong>Combustível (Dourado)</strong> e <strong>Manutenções (Azul)</strong>.</li>
+          <li><strong>Colunas Coloridas:</strong> divisão proporcional e empilhada entre gastos de <strong>Combustível / Energia (Dourado)</strong> e <strong>Manutenções (Azul)</strong>.</li>
           <li><strong>Interativo (Drill-Down):</strong> tocar em qualquer coluna abre o detalhamento exato com a lista de tudo o que foi gasto naquele período específico.</li>
-          <li><strong>Tabela de Consumo:</strong> resumo da frota com litros abastecidos, consumo em km/l e avaliação do termômetro.</li>
+          <li><strong>Tabela de Consumo:</strong> resumo da frota com litros/kWh registrados, consumo em km/l ou km/kWh e avaliação de eficiência.</li>
         </ul>
       </section>
 
       <!-- 18. Diário de Bordo -->
       <section id="diario-de-bordo">
         <h2>18. Diário de Bordo (Log Unificado do Veículo)</h2>
-        <p>A tela <code>TelaHistoricoVeiculo</code> consolida a linha do tempo completa do carro, moto ou caminhão, trazendo o <strong>Termômetro de Consumo individual do veículo</strong>, o card de rotina de abastecimento e, em ordem cronológica reversa, todas as manutenções executadas, abastecimentos, evolução do odômetro e gastos acumulados com filtros rápidos (*Tudo*, *Serviços* e *Abastecimentos*).</p>
+        <p>A tela <code>TelaHistoricoVeiculo</code> consolida a linha do tempo completa do carro, moto ou caminhão, trazendo o <strong>Termômetro de Consumo individual do veículo</strong>, o card de rotina de abastecimento/recarga e, em ordem cronológica reversa, todas as manutenções executadas, abastecimentos/recargas, evolução do odômetro e gastos acumulados com filtros rápidos (*Tudo*, *Serviços* e *Abastecimentos/Recargas*).</p>
       </section>
 
       <!-- 19. Central de Dúvidas (FAQ) -->
@@ -390,12 +398,21 @@ service cloud.firestore {
 
         <details class="faq-item">
           <summary>Como cadastrar meu carro, moto ou caminhão?</summary>
-          <div class="faq-answer">Na aba "Veículos" ou no botão flutuante da tela inicial, toque em "Novo Veículo". Selecione se o veículo é um <strong>Carro</strong>, <strong>Moto</strong> ou <strong>Caminhão</strong> e escolha a <strong>Marca</strong> e o <strong>Modelo</strong> diretamente na lista pesquisável (ou usando os chips rápidos de marcas e modelos da marca selecionada). Você também pode tocar em "Consultar Tabela FIPE" no card do veículo para puxar automaticamente o ano oficial e o valor médio de mercado!</div>
+          <div class="faq-answer">Na aba "Veículos" ou no botão flutuante da tela inicial, toque em "Novo Veículo". Selecione se o veículo é um <strong>Carro</strong>, <strong>Moto</strong> ou <strong>Caminhão</strong>, escolha a motorização (<strong>Combustão</strong>, <strong>Híbrido</strong> ou <strong>100% Elétrico ⚡</strong>) e escolha a <strong>Marca</strong> e o <strong>Modelo</strong> diretamente na lista pesquisável. Você também pode tocar em "Consultar Tabela FIPE" no card do veículo para puxar automaticamente o ano oficial e o valor médio de mercado!</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como funciona o suporte para Carros, Motos e Caminhões Elétricos ou Híbridos?</summary>
+          <div class="faq-answer">Ao cadastrar ou editar um veículo, você pode selecionar a motorização entre "Combustão", "Híbrido" ou "100% Elétrico ⚡" (além disso, ao escolher marcas/modelos conhecidos como BYD, Tesla, Voltz, Watts, GWM Haval ou VW e-Delivery, o app detecta a propulsão automaticamente!). Quando o veículo é 100% Elétrico, o app adapta tudo:
+• Recargas exclusivamente em Eletricidade (kWh) e eficiência medida em km/kWh (sem opções de Gasolina, Etanol ou GNV).
+• Capacidade da bateria em kWh e sugestões de Eletropostos (Tupinambá, Shell Recharge, Zletric, Wallbox).
+• Catálogo de manutenção exclusivo para veículos elétricos (bateria de alta tensão, arrefecimento do inversor, óleo do redutor EV, freios regenerativos), ocultando itens de motor a combustão (óleo de motor, velas, correia dentada, escapamento).
+• Isenção ambiental automática no Rodízio Municipal.</div>
         </details>
 
         <details class="faq-item">
           <summary>Como o app avisa o dia do meu rodízio veicular?</summary>
-          <div class="faq-answer">O CarCare lê o último número da placa informada (padrão antigo ou Mercosul) e calcula o dia da restrição de trânsito (ex: finais 1 e 2 na segunda-feira, 3 e 4 na terça, etc.). Se hoje for o dia do rodízio do seu carro, um banner amarelo em destaque surge no topo da tela inicial. Motocicletas são identificadas automaticamente como isentas de rodízio.</div>
+          <div class="faq-answer">O CarCare lê o último número da placa informada (padrão antigo ou Mercosul) e calcula o dia da restrição de trânsito (ex: finais 1 e 2 na segunda-feira, 3 e 4 na terça, etc.). Se hoje for o dia do rodízio do seu carro, um banner amarelo em destaque surge no topo da tela inicial. Motocicletas e veículos Elétricos/Híbridos são identificados automaticamente como isentos do rodízio municipal.</div>
         </details>
 
         <details class="faq-item">
@@ -409,60 +426,60 @@ service cloud.firestore {
         </details>
 
         <!-- 2. Combustível & Consumo -->
-        <div class="faq-category">⛽ Combustível &amp; Consumo</div>
+        <div class="faq-category">⛽ Combustível, Recarga EV &amp; Consumo</div>
 
         <details class="faq-item">
           <summary>Como funciona o cálculo de quilometragem e consumo?</summary>
-          <div class="faq-answer">Ao cadastrar um abastecimento, o app exibe a quilometragem anterior registrada. Ao digitar o novo odômetro e os litros abastecidos, o app calcula na hora a distância percorrida e o rendimento do trecho (km/l ou km/m³). Ao salvar, a quilometragem do veículo no banco é atualizada automaticamente!</div>
+          <div class="faq-answer">Ao cadastrar um abastecimento ou recarga elétrica, o app exibe a quilometragem anterior registrada. Ao digitar o novo odômetro e os litros/kWh, o app calcula na hora a distância percorrida e o rendimento do trecho (km/l, km/m³ ou km/kWh). Ao salvar, a quilometragem do veículo no banco é atualizada automaticamente!</div>
         </details>
 
         <details class="faq-item">
-          <summary>Posso abastecer com Etanol, Diesel ou GNV?</summary>
-          <div class="faq-answer">Sim! O formulário de abastecimento permite escolher entre Gasolina, Etanol, Diesel e GNV. Ao selecionar GNV, o campo de volume muda automaticamente para Metros Cúbicos (m³) e o consumo é calculado em km/m³.</div>
+          <summary>Posso abastecer com Etanol, Diesel, GNV ou Eletricidade (kWh)?</summary>
+          <div class="faq-answer">Sim! O formulário adapta as opções de acordo com a motorização do veículo: veículos 100% elétricos usam Eletricidade (kWh); veículos híbridos oferecem tanto combustíveis líquidos quanto Eletricidade (kWh); e veículos a combustão oferecem Gasolina, Etanol, Diesel e GNV (m³).</div>
         </details>
 
         <details class="faq-item">
-          <summary>Para que serve marcar a opção "Tanque cheio até o automático"?</summary>
-          <div class="faq-answer">Abastecer com "tanque cheio" é a forma padrão da engenharia automotiva para saber o consumo exato do motor. Quando você marca que o tanque foi completado, o app calcula a média exata de km/l entre dois tanques cheios. Se foi um abastecimento parcial (ex: colocou só R$ 50), deixe a chave desmarcada para não distorcer sua média.</div>
+          <summary>Para que serve marcar a opção "Tanque Completo / Carga 100%"?</summary>
+          <div class="faq-answer">Completar o tanque (ou carregar a bateria até 100%) é a forma padrão da engenharia automotiva para saber o consumo exato do veículo. Quando você marca essa opção, o app calcula a média exata de km/l ou km/kWh entre dois ciclos completos. Se foi parcial, deixe a chave desmarcada para acumular até a próxima carga completa.</div>
         </details>
 
         <details class="faq-item">
-          <summary>Como funciona a calculadora automática no abastecimento?</summary>
-          <div class="faq-answer">No formulário de abastecimento, os campos "Preço por Litro", "Volume (Litros)" e "Valor Total Pago" estão interligados em tempo real:
-• Digite o Preço/L e os Litros ➔ O Total Pago é calculado na hora.
-• Digite o Preço/L e o Total Pago ➔ A quantidade de Litros é calculada na hora.
-• Digite os Litros e o Total Pago ➔ O Preço por Litro é calculado na hora.</div>
+          <summary>Como funciona a calculadora automática no abastecimento / recarga?</summary>
+          <div class="faq-answer">No formulário, os campos "Preço por Litro/kWh", "Volume/Carga" e "Valor Total Pago" estão interligados em tempo real:
+• Digite o Preço unitário e os Litros/kWh ➔ O Total Pago é calculado na hora.
+• Digite o Preço unitário e o Total Pago ➔ A quantidade de Litros/kWh é calculada na hora.
+• Digite os Litros/kWh e o Total Pago ➔ O Preço unitário é calculado na hora.</div>
         </details>
 
         <details class="faq-item">
-          <summary>O que é o card "Rotina de Abastecimento"?</summary>
-          <div class="faq-answer">É um painel estatístico inteligente na aba de Abastecimentos que analisa o seu padrão de uso:
-• <strong>Distância entre abastecimentos:</strong> quantos km você roda em média antes de parar no posto.
-• <strong>Frequência:</strong> a cada quantos dias você costuma abastecer.
-• <strong>Autonomia estimada:</strong> projeção de quantos km seu tanque cheio rende.
-• <strong>Projeção mensal:</strong> estimativa de quanto você gastará de combustível no mês.
-• <strong>Barra inferior:</strong> percentual de abastecimentos feitos com tanque completo.</div>
+          <summary>O que é o card "Rotina de Abastecimento / Recarga"?</summary>
+          <div class="faq-answer">É um painel estatístico inteligente na aba de Abastecimentos e no Log do Veículo que analisa o seu padrão de uso:
+• <strong>Distância entre paradas:</strong> quantos km você roda em média antes de abastecer/recarregar.
+• <strong>Frequência:</strong> a cada quantos dias você costuma parar no posto/eletroposto.
+• <strong>Autonomia estimada:</strong> projeção de quantos km seu tanque cheio ou bateria em 100% rende.
+• <strong>Projeção mensal:</strong> estimativa de quanto você gastará no mês.
+• <strong>Barra inferior:</strong> percentual de registros feitos com tanque cheio ou carga 100%.</div>
         </details>
 
         <details class="faq-item">
-          <summary>O que significa o Termômetro de Consumo?</summary>
-          <div class="faq-answer">O termômetro visual indica se o consumo médio do veículo está eficiente:
-• <strong>Verde (Muito Econômico):</strong> Alta autonomia por litro/m³.
-• <strong>Amarelo (Normal / Moderado):</strong> Consumo padrão esperado para o combustível e tipo de veículo.
-• <strong>Vermelho (Alto Consumo):</strong> Indica consumo elevado. Vale a pena verificar calibragem dos pneus, filtro de ar, velas e bicos injetores.</div>
+          <summary>Onde fica e o que significa o Termômetro de Consumo?</summary>
+          <div class="faq-answer">Cada veículo possui seu próprio Termômetro de Consumo exclusivo dentro do "Diário de Bordo / Log do Veículo" (basta tocar no veículo e abrir o Diário de Bordo). Ele indica se o consumo médio daquele veículo está eficiente:
+• <strong>Verde (Muito Econômico):</strong> Alta autonomia por litro, m³ ou kWh.
+• <strong>Amarelo (Normal / Moderado):</strong> Consumo padrão esperado para o combustível/energia e tipo de veículo.
+• <strong>Vermelho (Alto Consumo):</strong> Indica consumo elevado. Vale a pena verificar calibragem dos pneus e revisão preventiva.</div>
         </details>
 
         <!-- 3. Serviços & Postos -->
-        <div class="faq-category">📍 Serviços &amp; Postos</div>
+        <div class="faq-category">📍 Serviços, Postos &amp; Eletropostos</div>
 
         <details class="faq-item">
-          <summary>Como encontrar postos, mecânicos e borracharias próximos?</summary>
-          <div class="faq-answer">No topo do app (na barra superior), toque no ícone de <strong>Bússola</strong>. O painel "Radar de Serviços Próximos" permite encontrar com 1 toque no Google Maps: Postos de Combustível, Oficinas Mecânicas, Borracharias 24h, Autoelétricas, Lava-rápidos e Auto Socorro / Guincho na sua região atual.</div>
+          <summary>Como encontrar postos, eletropostos, mecânicos e borracharias próximos?</summary>
+          <div class="faq-answer">No topo do app (na barra superior), toque no ícone de <strong>Bússola</strong>. O painel "Radar de Serviços Próximos" permite encontrar com 1 toque no Google Maps: Postos de Combustível, Eletropostos / Recarga EV, Oficinas Mecânicas, Borracharias 24h, Autoelétricas, Lava-rápidos e Auto Socorro / Guincho na sua região atual.</div>
         </details>
 
         <details class="faq-item">
           <summary>O que é o Histórico de Postos Frequentados?</summary>
-          <div class="faq-answer">Na aba "Abastecimentos", toque no botão "Histórico de Postos Frequentados". Nele você visualiza todos os postos onde já abasteceu, quantidade de visitas, total gasto em reais, volume em litros e os preços históricos que você pagou por Gasolina, Etanol, Diesel ou GNV, além de um botão para abrir rota no Google Maps!</div>
+          <div class="faq-answer">Na aba "Abastecimentos", toque no botão "Histórico de Postos Frequentados". Nele você visualiza todos os postos e eletropostos onde já abasteceu/recarregou, quantidade de visitas, total gasto em reais, volume/energia e os preços históricos por L, m³ ou kWh, além de um botão para abrir rota no Google Maps!</div>
         </details>
 
         <!-- 4. Documentos & Pneus -->

@@ -290,15 +290,18 @@ class Calculos {
       distanciaMediaDiaria(fuels);
 
   /// Avalia a eficiência do consumo (Termômetro: Econômico / Normal / Alto).
+  /// Suporta veículos a Combustão, Híbridos e 100% Elétricos (km/kWh).
   static AvaliacaoConsumo? avaliarConsumo(
     double? kmPorUnidade, {
     bool eCarro = true,
     bool eCaminhao = false,
     TipoVeiculo? tipoVeiculo,
+    TipoPropulsao? propulsao,
     String tipoCombustivel = TiposCombustivel.gasolina,
     bool? isCar,
     bool? isTruck,
     TipoVeiculo? vehicleType,
+    TipoPropulsao? propulsion,
     String? fuelType,
   }) {
     if (kmPorUnidade == null || kmPorUnidade <= 0) return null;
@@ -309,8 +312,96 @@ class Calculos {
         (caminhaoResolvido
             ? TipoVeiculo.caminhao
             : (carroResolvido ? TipoVeiculo.carro : TipoVeiculo.moto));
+    final propResolvida = propulsion ?? propulsao ?? TipoPropulsao.combustao;
     final combustivel = fuelType ?? tipoCombustivel;
 
+    // 1. Avaliação para Energia Elétrica (km/kWh) — Carros, Motos e Caminhões Elétricos ou Plug-in
+    if (combustivel == TiposCombustivel.eletricidade || propResolvida == TipoPropulsao.eletrico) {
+      if (tipo == TipoVeiculo.moto) {
+        if (kmPorUnidade >= 22.0) {
+          return AvaliacaoConsumo(
+            kmPorLitro: kmPorUnidade,
+            nivel: NivelConsumo.otimo,
+            rotulo: 'Muito Eficiente (EV)',
+            descricao: 'Excelente eficiência energética na moto elétrica!',
+            pontuacao: 0.90,
+          );
+        } else if (kmPorUnidade >= 14.0) {
+          return AvaliacaoConsumo(
+            kmPorLitro: kmPorUnidade,
+            nivel: NivelConsumo.moderado,
+            rotulo: 'Eficiência Normal (EV)',
+            descricao: 'Consumo em kWh dentro do padrão para moto elétrica.',
+            pontuacao: 0.55,
+          );
+        } else {
+          return AvaliacaoConsumo(
+            kmPorLitro: kmPorUnidade,
+            nivel: NivelConsumo.alto,
+            rotulo: 'Alto Consumo (EV)',
+            descricao: 'Gasto elevado de bateria. Verifique calibragem dos pneus e rolamentos.',
+            pontuacao: 0.20,
+          );
+        }
+      }
+
+      if (tipo == TipoVeiculo.caminhao) {
+        if (kmPorUnidade >= 1.1) {
+          return AvaliacaoConsumo(
+            kmPorLitro: kmPorUnidade,
+            nivel: NivelConsumo.otimo,
+            rotulo: 'Excelente Eficiência (EV)',
+            descricao: 'Ótimo rendimento energético para caminhão elétrico!',
+            pontuacao: 0.90,
+          );
+        } else if (kmPorUnidade >= 0.7) {
+          return AvaliacaoConsumo(
+            kmPorLitro: kmPorUnidade,
+            nivel: NivelConsumo.moderado,
+            rotulo: 'Eficiência Normal (EV)',
+            descricao: 'Consumo energético dentro do esperado para transporte.',
+            pontuacao: 0.55,
+          );
+        } else {
+          return AvaliacaoConsumo(
+            kmPorLitro: kmPorUnidade,
+            nivel: NivelConsumo.alto,
+            rotulo: 'Alto Consumo (EV)',
+            descricao: 'Consumo elevado de kWh. Verifique peso da carga, pneus e regeneração.',
+            pontuacao: 0.20,
+          );
+        }
+      }
+
+      // Carro Elétrico (km/kWh)
+      if (kmPorUnidade >= 6.2) {
+        return AvaliacaoConsumo(
+          kmPorLitro: kmPorUnidade,
+          nivel: NivelConsumo.otimo,
+          rotulo: 'Muito Eficiente (EV)',
+          descricao: 'Excelente autonomia por kWh! Ótimo aproveitamento da regeneração.',
+          pontuacao: 0.90,
+        );
+      } else if (kmPorUnidade >= 4.5) {
+        return AvaliacaoConsumo(
+          kmPorLitro: kmPorUnidade,
+          nivel: NivelConsumo.moderado,
+          rotulo: 'Eficiência Normal (EV)',
+          descricao: 'Consumo de bateria equilibrado para veículo elétrico.',
+          pontuacao: 0.55,
+        );
+      } else {
+        return AvaliacaoConsumo(
+          kmPorLitro: kmPorUnidade,
+          nivel: NivelConsumo.alto,
+          rotulo: 'Alto Consumo (EV)',
+          descricao: 'Consumo elevado de bateria. Cheque calibragem, ar-condicionado e condução.',
+          pontuacao: 0.20,
+        );
+      }
+    }
+
+    // 2. Motos a Combustão / Híbridas
     if (tipo == TipoVeiculo.moto) {
       if (kmPorUnidade >= 33.0) {
         return AvaliacaoConsumo(
@@ -339,6 +430,7 @@ class Calculos {
       }
     }
 
+    // 3. Caminhões a Combustão / Híbridos
     if (tipo == TipoVeiculo.caminhao) {
       if (kmPorUnidade >= 3.5) {
         return AvaliacaoConsumo(
@@ -367,7 +459,38 @@ class Calculos {
       }
     }
 
-    // Carros
+    // 4. Carros Híbridos (rodando em Gasolina / Etanol)
+    if (propResolvida == TipoPropulsao.hibrido) {
+      final limiteOtimo = combustivel == TiposCombustivel.etanol ? 11.5 : 16.0;
+      final limiteModerado = combustivel == TiposCombustivel.etanol ? 9.0 : 12.5;
+      if (kmPorUnidade >= limiteOtimo) {
+        return AvaliacaoConsumo(
+          kmPorLitro: kmPorUnidade,
+          nivel: NivelConsumo.otimo,
+          rotulo: 'Excelente (Híbrido)',
+          descricao: 'Ótima eficiência combinando motor elétrico e combustão!',
+          pontuacao: 0.90,
+        );
+      } else if (kmPorUnidade >= limiteModerado) {
+        return AvaliacaoConsumo(
+          kmPorLitro: kmPorUnidade,
+          nivel: NivelConsumo.moderado,
+          rotulo: 'Normal (Híbrido)',
+          descricao: 'Média dentro do esperado para um veículo híbrido.',
+          pontuacao: 0.55,
+        );
+      } else {
+        return AvaliacaoConsumo(
+          kmPorLitro: kmPorUnidade,
+          nivel: NivelConsumo.alto,
+          rotulo: 'Alto Consumo (Híbrido)',
+          descricao: 'Consumo elevado para um híbrido. Verifique bateria híbrida, filtros e pneus.',
+          pontuacao: 0.20,
+        );
+      }
+    }
+
+    // 5. Carros a Combustão
     if (combustivel == TiposCombustivel.etanol) {
       if (kmPorUnidade >= 9.5) {
         return AvaliacaoConsumo(
@@ -455,12 +578,14 @@ class Calculos {
     bool isCar = true,
     bool isTruck = false,
     TipoVeiculo? vehicleType,
+    TipoPropulsao? propulsion,
     String fuelType = TiposCombustivel.gasolina,
   }) =>
       avaliarConsumo(kmPerUnit,
           isCar: isCar,
           isTruck: isTruck,
           vehicleType: vehicleType,
+          propulsion: propulsion,
           fuelType: fuelType);
 
   static double totalManutencoes(Iterable<Manutencao> lista) =>

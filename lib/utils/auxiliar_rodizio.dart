@@ -60,9 +60,11 @@ class AuxiliarRodizio {
     bool eCarro = true,
     bool eCaminhao = false,
     TipoVeiculo? tipo,
+    TipoPropulsao? propulsao,
     bool? isCar,
     bool? isTruck,
     TipoVeiculo? type,
+    TipoPropulsao? propulsion,
   }) {
     final bool carroResolvido = isCar ?? eCarro;
     final bool caminhaoResolvido = isTruck ?? eCaminhao;
@@ -70,6 +72,7 @@ class AuxiliarRodizio {
         (caminhaoResolvido
             ? TipoVeiculo.caminhao
             : (carroResolvido ? TipoVeiculo.carro : TipoVeiculo.moto));
+    final propEfetiva = propulsao ?? propulsion ?? TipoPropulsao.combustao;
 
     if (tipoEfetivo == TipoVeiculo.moto) {
       return const InformacaoRodizio(
@@ -79,6 +82,19 @@ class AuxiliarRodizio {
         eHoje: false,
         eIsento: true,
         descricao: 'Motocicletas são isentas do rodízio municipal.',
+      );
+    }
+
+    if (propEfetiva == TipoPropulsao.eletrico || propEfetiva == TipoPropulsao.hibrido) {
+      final tipoProp = propEfetiva == TipoPropulsao.eletrico ? 'Elétrico' : 'Híbrido';
+      return InformacaoRodizio(
+        ultimoDigito: extrairUltimoDigito(placa),
+        nomeDia: 'Isento ($tipoProp)',
+        diaSemana: 0,
+        eHoje: false,
+        eIsento: true,
+        horarioRestricao: 'Livre (Isenção Ambiental)',
+        descricao: 'Veículos elétricos e híbridos possuem isenção do rodízio municipal.',
       );
     }
 
@@ -174,8 +190,15 @@ class AuxiliarRodizio {
     bool isCar = true,
     bool isTruck = false,
     TipoVeiculo? type,
+    TipoPropulsao? propulsion,
   }) =>
-      obterInformacoes(plate, isCar: isCar, isTruck: isTruck, type: type);
+      obterInformacoes(
+        plate,
+        isCar: isCar,
+        isTruck: isTruck,
+        type: type,
+        propulsion: propulsion,
+      );
 }
 
 /// Alias para manter compatibilidade

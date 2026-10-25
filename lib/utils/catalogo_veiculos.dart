@@ -239,6 +239,28 @@ class CatalogoVeiculos {
       'Sorento',
       'Bongo',
     ],
+    'Volvo': [
+      'EX30',
+      'XC40 Recharge',
+      'C40 Recharge',
+      'XC60',
+      'XC90',
+    ],
+    'Tesla': [
+      'Model 3',
+      'Model Y',
+      'Model S',
+      'Model X',
+      'Cybertruck',
+    ],
+    'JAC': [
+      'E-JS1',
+      'E-JS4',
+      'E-J7',
+      'T40',
+      'T50',
+      'T60',
+    ],
   };
 
   static const Map<String, List<String>> _motosPorMarca = {
@@ -301,6 +323,19 @@ class CatalogoVeiculos {
       'JEF 150',
       'Phoenix 50',
       'Rio 125',
+      'SE1 Elétrica',
+      'SE3 Elétrica',
+    ],
+    'Voltz': [
+      'EVS',
+      'EVS Work',
+      'EV1 Sport',
+      'Miles',
+    ],
+    'Watts': [
+      'W125 Elétrica',
+      'W160S Elétrica',
+      'WS120',
     ],
     'Mottu': [
       'Sport 110i',
@@ -351,6 +386,7 @@ class CatalogoVeiculos {
       'R 1250 GS',
       'R 1300 GS',
       'S 1000 RR',
+      'CE 04 Elétrica',
     ],
     'Kawasaki': [
       'Ninja 300',
@@ -404,12 +440,15 @@ class CatalogoVeiculos {
       'L-1620',
       'L-1113',
       '710',
+      'eActros Elétrico',
     ],
     'Volkswagen': [
       'Delivery Express',
       'Delivery 9.170',
       'Delivery 11.180',
       'Delivery 13.180',
+      'e-Delivery 11 Ton (Elétrico)',
+      'e-Delivery 14 Ton (Elétrico)',
       'Constellation 17.190',
       'Constellation 24.280',
       'Constellation 25.460',
@@ -425,6 +464,8 @@ class CatalogoVeiculos {
       'FH 460',
       'FM 370',
       'FM 380',
+      'FM Electric (Elétrico)',
+      'FH Electric (Elétrico)',
       'FMX 500',
       'VM 270',
       'VM 290',
@@ -442,6 +483,15 @@ class CatalogoVeiculos {
       'P 360',
       'S 540',
       '113H',
+      '25P Elétrico',
+    ],
+    'JAC': [
+      'iEV1200T (Elétrico)',
+      'E-JT 12,5 (Elétrico)',
+    ],
+    'BYD': [
+      'eT7 (Elétrico)',
+      'eT8 (Elétrico)',
     ],
     'DAF': [
       'XF 530',
@@ -454,6 +504,7 @@ class CatalogoVeiculos {
       'Daily 35-150',
       'Daily 45-170',
       'Daily 55-170',
+      'eDaily (Elétrico)',
       'Tector 17-280',
       'Tector 24-300',
       'Tector 9-190',

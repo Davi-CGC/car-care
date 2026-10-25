@@ -63,7 +63,11 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final v = widget.vehicle;
-    final rodizio = RodizioHelper.getInfo(v.plate, type: v.type);
+    final rodizio = RodizioHelper.getInfo(
+      v.plate,
+      type: v.type,
+      propulsion: v.propulsion,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -141,12 +145,36 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        v.name,
-                                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                      Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              v.name,
+                                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                          if (v.usesElectricPower) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: (v.isElectric ? Colors.green : Colors.teal).withValues(alpha: 0.15),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                '⚡ ${v.propulsion.shortLabel}',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: v.isElectric ? Colors.green[600] : Colors.teal[600],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                       Text(
-                                        'Placa: ${v.plate.isNotEmpty ? v.plate.toUpperCase() : 'Não informada'} • Ano: ${v.year.isNotEmpty ? v.year : '--'}',
+                                        'Placa: ${v.plate.isNotEmpty ? v.plate.toUpperCase() : 'Não informada'} • Ano: ${v.year.isNotEmpty ? v.year : '--'} • ${v.propulsion.label}',
                                         style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                                       ),
                                       Text(
@@ -163,16 +191,20 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                             Row(
                               children: [
                                 Icon(
-                                  Icons.calendar_month,
+                                  rodizio.isExempt ? Icons.verified_outlined : Icons.calendar_month,
                                   size: 18,
-                                  color: rodizio.isToday ? AppColors.warning : Colors.grey,
+                                  color: rodizio.isToday
+                                      ? AppColors.warning
+                                      : (rodizio.isExempt && v.usesElectricPower ? Colors.green[600] : Colors.grey),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     v.isMotorcycle
                                         ? 'Rodízio: Isento (Motocicleta)'
-                                        : 'Dia de Rodízio: ${rodizio.dayName} (${rodizio.timeRange})',
+                                        : (rodizio.isExempt
+                                            ? 'Rodízio: ${rodizio.dayName} — ${rodizio.timeRange}'
+                                            : 'Dia de Rodízio: ${rodizio.dayName} (${rodizio.timeRange})'),
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: rodizio.isToday ? FontWeight.bold : FontWeight.normal,
@@ -230,9 +262,9 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: _StatMiniCard(
-                            label: 'Combustível',
+                            label: v.isElectric ? 'Recargas (kWh)' : 'Combustível',
                             value: formatMoney(totalFuelCost),
-                            icon: Icons.local_gas_station,
+                            icon: v.isElectric ? Icons.ev_station : Icons.local_gas_station,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -268,7 +300,7 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                     ],
                     const SizedBox(height: 16),
 
-                    // Card de Rotina de Abastecimento (idêntico ao modelo)
+                    // Card de Rotina de Abastecimento / Recarga
                     if (vehicleFuels.isNotEmpty) ...[
                       FuelRoutineCard(vehicle: v, fuels: vehicleFuels),
                       const SizedBox(height: 16),
@@ -279,15 +311,18 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                       Builder(
                         builder: (_) {
                           final lastFuel = vehicleFuels.isNotEmpty ? vehicleFuels.first : null;
+                          final effectiveFuelType = lastFuel?.fuelType ??
+                              (v.isElectric ? FuelTypes.eletricidade : FuelTypes.gasolina);
                           final eval = Calculations.evaluateConsumption(
                             avgConsumption,
                             vehicleType: v.type,
-                            fuelType: lastFuel?.fuelType ?? FuelTypes.gasolina,
+                            propulsion: v.propulsion,
+                            fuelType: effectiveFuelType,
                           );
                           if (eval == null) return const SizedBox.shrink();
                           return ConsumptionThermometer(
                             evaluation: eval,
-                            unit: lastFuel?.unit == 'm³' ? 'km/m³' : 'km/l',
+                            unit: lastFuel?.consumptionUnit ?? v.defaultConsumptionUnit,
                             vehicleName: v.name,
                           );
                         },
@@ -322,7 +357,9 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Registre pelo menos 2 abastecimentos neste veículo para calcular a média (km/l) e ativar o termômetro de consumo.',
+                                      v.isElectric
+                                          ? 'Registre pelo menos 2 recargas elétricas neste veículo para calcular a eficiência (${v.defaultConsumptionUnit}) e ativar o termômetro.'
+                                          : 'Registre pelo menos 2 abastecimentos neste veículo para calcular a média (${v.defaultConsumptionUnit}) e ativar o termômetro de consumo.',
                                       style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                                     ),
                                   ],
@@ -345,10 +382,13 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                           ),
                         ),
                         SegmentedButton<_LogFilter>(
-                          segments: const [
-                            ButtonSegment(value: _LogFilter.todos, label: Text('Tudo')),
-                            ButtonSegment(value: _LogFilter.manutencoes, label: Text('Serviços')),
-                            ButtonSegment(value: _LogFilter.abastecimentos, label: Text('Abast.')),
+                          segments: [
+                            const ButtonSegment(value: _LogFilter.todos, label: Text('Tudo')),
+                            const ButtonSegment(value: _LogFilter.manutencoes, label: Text('Serviços')),
+                            ButtonSegment(
+                              value: _LogFilter.abastecimentos,
+                              label: Text(v.isElectric ? 'Recargas' : 'Abast.'),
+                            ),
                           ],
                           selected: {_filter},
                           onSelectionChanged: (s) => setState(() => _filter = s.first),
@@ -454,8 +494,13 @@ class _TimelineTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                backgroundColor: AppColors.goldenPollen.withValues(alpha: 0.15),
-                child: const Icon(Icons.local_gas_station, color: AppColors.goldenPollen, size: 20),
+                backgroundColor: (f.isElectric ? Colors.green : AppColors.goldenPollen)
+                    .withValues(alpha: 0.15),
+                child: Icon(
+                  f.isElectric ? Icons.ev_station : Icons.local_gas_station,
+                  color: f.isElectric ? Colors.green[600] : AppColors.goldenPollen,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -466,7 +511,9 @@ class _TimelineTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Abastecimento • ${f.fuelType}',
+                            f.isElectric
+                                ? 'Recarga Elétrica • ${f.fuelType}'
+                                : 'Abastecimento • ${f.fuelType}',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                         ),
@@ -482,7 +529,7 @@ class _TimelineTile extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                     ),
                     Text(
-                      'Volume: ${formatNumber(f.liters, 2)} ${f.unit} • ${formatMoney(f.pricePerLiter)}/${f.unit}',
+                      '${f.isElectric ? 'Carga' : 'Volume'}: ${formatNumber(f.liters, 2)} ${f.unit} • ${formatMoney(f.pricePerLiter)}/${f.unit}',
                       style: const TextStyle(fontSize: 12),
                     ),
                   ],

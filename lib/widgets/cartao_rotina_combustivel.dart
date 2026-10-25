@@ -59,31 +59,37 @@ class CartaoRotinaCombustivel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cabeçalho com Ícone Laranja e Título
+            // Cabeçalho com Ícone e Título adaptado para Combustão ou Elétrico
             Row(
               children: [
                 Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: corLaranja,
+                    color: veiculo.eEletrico ? Colors.green[600] : corLaranja,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
-                      Icons.show_chart,
+                      veiculo.eEletrico ? Icons.ev_station : Icons.show_chart,
                       color: Colors.white,
                       size: 24,
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Rotina de abastecimento',
-                  style: tema.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: corLaranja,
-                    fontSize: 17,
+                Expanded(
+                  child: Text(
+                    veiculo.eEletrico
+                        ? 'Rotina de recarga elétrica'
+                        : (veiculo.eHibrido
+                            ? 'Rotina de abastecimento & recarga'
+                            : 'Rotina de abastecimento'),
+                    style: tema.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: veiculo.eEletrico ? Colors.green[600] : corLaranja,
+                      fontSize: 17,
+                    ),
                   ),
                 ),
               ],
@@ -95,7 +101,7 @@ class CartaoRotinaCombustivel extends StatelessWidget {
               children: [
                 Expanded(
                   child: _ItemMetrica(
-                    rotulo: 'Entre abastecimentos',
+                    rotulo: veiculo.eEletrico ? 'Entre recargas' : 'Entre abastecimentos',
                     valor: rotuloDistancia,
                   ),
                 ),
@@ -113,7 +119,7 @@ class CartaoRotinaCombustivel extends StatelessWidget {
               children: [
                 Expanded(
                   child: _ItemMetrica(
-                    rotulo: 'Autonomia estimada',
+                    rotulo: veiculo.eEletrico ? 'Autonomia (100% carga)' : 'Autonomia estimada',
                     valor: rotuloAutonomia,
                   ),
                 ),
@@ -145,8 +151,9 @@ class CartaoRotinaCombustivel extends StatelessWidget {
                       backgroundColor: eEscuro
                           ? Colors.white.withValues(alpha: 0.1)
                           : const Color(0xFFF1F1F4),
-                      valueColor:
-                          const AlwaysStoppedAnimation<Color>(corLaranja),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        veiculo.eEletrico ? Colors.green[600]! : corLaranja,
+                      ),
                     ),
                   ),
                 ),
@@ -154,8 +161,12 @@ class CartaoRotinaCombustivel extends StatelessWidget {
                 Expanded(
                   child: Text(
                     estatisticas.totalAbastecimentos > 0
-                        ? '${estatisticas.quantidadeTanqueCheio} de ${estatisticas.totalAbastecimentos} abastecimentos com tanque cheio (${formatarNumero(estatisticas.porcentagemTanqueCheio, 1)}%) — a média é medida de um tanque cheio até o próximo.'
-                        : 'Cadastre abastecimentos para acompanhar sua rotina e projeção mensal.',
+                        ? (veiculo.eEletrico
+                            ? '${estatisticas.quantidadeTanqueCheio} de ${estatisticas.totalAbastecimentos} recargas até 100% (${formatarNumero(estatisticas.porcentagemTanqueCheio, 1)}%) — a eficiência (km/kWh) é medida de uma carga completa até a próxima.'
+                            : '${estatisticas.quantidadeTanqueCheio} de ${estatisticas.totalAbastecimentos} abastecimentos com tanque cheio (${formatarNumero(estatisticas.porcentagemTanqueCheio, 1)}%) — a média é medida de um tanque cheio até o próximo.')
+                        : (veiculo.eEletrico
+                            ? 'Registre suas recargas em kWh para acompanhar a autonomia e projeção mensal.'
+                            : 'Cadastre abastecimentos para acompanhar sua rotina e projeção mensal.'),
                     style: tema.textTheme.bodySmall?.copyWith(
                       color: eEscuro ? Colors.grey[400] : const Color(0xFF6B7280),
                       fontSize: 12,

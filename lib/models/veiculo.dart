@@ -20,17 +20,50 @@ extension TipoVeiculoExt on TipoVeiculo {
 /// Alias para manter compatibilidade
 typedef VehicleType = TipoVeiculo;
 
+/// Tipo de motorização / propulsão do veículo (Combustão, Híbrido ou 100% Elétrico).
+enum TipoPropulsao { combustao, hibrido, eletrico }
+
+extension TipoPropulsaoExt on TipoPropulsao {
+  String get rotulo {
+    switch (this) {
+      case TipoPropulsao.combustao:
+        return 'Combustão / Flex';
+      case TipoPropulsao.hibrido:
+        return 'Híbrido';
+      case TipoPropulsao.eletrico:
+        return '100% Elétrico';
+    }
+  }
+
+  String get rotuloCurto {
+    switch (this) {
+      case TipoPropulsao.combustao:
+        return 'Combustão';
+      case TipoPropulsao.hibrido:
+        return 'Híbrido';
+      case TipoPropulsao.eletrico:
+        return 'Elétrico';
+    }
+  }
+
+  String get label => rotulo;
+  String get shortLabel => rotuloCurto;
+}
+
+typedef VehiclePropulsion = TipoPropulsao;
+
 /// Veículo do usuário em português. Salvo em: users/{uid}/vehicles/{id}
 class Veiculo {
   final String id;
   final TipoVeiculo tipo;
+  final TipoPropulsao propulsao;
   final String marca;
   final String modelo;
   final String ano;
   final String placa;
   final int kmAtual;
 
-  /// 'Manual', 'Automático' ou '' (motos).
+  /// 'Manual', 'Automático', 'Redutor Direto (Elétrico)' ou '' (motos).
   final String transmissao;
 
   // Dados da Tabela FIPE (vazios se o usuário não consultou).
@@ -38,7 +71,7 @@ class Veiculo {
   final String valorFipe;
   final String referenciaFipe;
 
-  // Capacidade do tanque de combustível (Litros ou m³ no caso de GNV)
+  // Capacidade do tanque de combustível (Litros, m³ no caso de GNV, ou kWh da bateria nos elétricos)
   final double capacidadeTanque;
 
   // Documentos e Lembretes (IPVA, Licenciamento, Seguro, Rodízio de Pneus)
@@ -59,6 +92,8 @@ class Veiculo {
     this.id = '',
     TipoVeiculo? tipo,
     TipoVeiculo? type,
+    TipoPropulsao? propulsao,
+    TipoPropulsao? propulsion,
     String? marca,
     String? brand,
     String? modelo,
@@ -102,6 +137,9 @@ class Veiculo {
     DateTime? criadoEm,
     DateTime? createdAt,
   })  : tipo = tipo ?? type ?? TipoVeiculo.carro,
+        propulsao = propulsao ??
+            propulsion ??
+            inferirPropulsao(marca ?? brand ?? '', modelo ?? model ?? ''),
         marca = marca ?? brand ?? '',
         modelo = modelo ?? model ?? '',
         ano = ano ?? year ?? '',
@@ -124,8 +162,93 @@ class Veiculo {
         intervaloRodizioPneusKm = intervaloRodizioPneusKm ?? tireRotationIntervalKm ?? 10000,
         criadoEm = criadoEm ?? createdAt ?? DateTime.now();
 
+  /// Infere automaticamente se um modelo conhecido é elétrico ou híbrido.
+  static TipoPropulsao inferirPropulsao(String marca, String modelo) {
+    final m = marca.trim().toLowerCase();
+    final mod = modelo.trim().toLowerCase();
+    final completo = '$m $mod';
+
+    // Marcas 100% elétricas
+    if (m == 'tesla' || m == 'voltz' || m == 'watts' || m == 'super soco' || m == 'gws') {
+      return TipoPropulsao.eletrico;
+    }
+
+    // Modelos 100% elétricos conhecidos (Carros, Motos e Caminhões)
+    const palavrasEletrico = [
+      'dolphin',
+      'yuan',
+      'seal',
+      'tan ',
+      'han ',
+      'ora 03',
+      'ora ',
+      'icar',
+      'kwid e-tech',
+      'e-tech',
+      'mottu-e',
+      'evs',
+      'ev1',
+      'e-delivery',
+      'iev',
+      'e-js',
+      'ex30',
+      'xc40 recharge',
+      'c40',
+      'bolt',
+      'blazer ev',
+      'equinox ev',
+      'taycan',
+      'e-tron',
+      'ix ',
+      'i4 ',
+      'ix1',
+      'ix3',
+      'leaf',
+      'zoe',
+      'megane e-tech',
+      '500e',
+      'e-208',
+      'e-2008',
+      'fm electric',
+      'fh electric',
+      'et7',
+      'elétrico',
+      'eletrico',
+    ];
+    for (final p in palavrasEletrico) {
+      if (completo.contains(p)) return TipoPropulsao.eletrico;
+    }
+
+    // Modelos híbridos conhecidos
+    const palavrasHibrido = [
+      'song',
+      'king',
+      'shark',
+      'haval',
+      'prius',
+      'corolla hybrid',
+      'corolla cross hybrid',
+      'rav4',
+      'niro',
+      'stonic',
+      'tiggo 8 pro plug-in',
+      'arrizo 6 pro hybrid',
+      'híbrido',
+      'hibrido',
+      'hybrid',
+      'phev',
+      'mhev',
+    ];
+    for (final p in palavrasHibrido) {
+      if (completo.contains(p)) return TipoPropulsao.hibrido;
+    }
+
+    return TipoPropulsao.combustao;
+  }
+
   // Getters em português e aliases em inglês
   TipoVeiculo get type => tipo;
+  TipoPropulsao get propulsion => propulsao;
   String get brand => marca;
   String get model => modelo;
   String get year => ano;
@@ -155,6 +278,21 @@ class Veiculo {
   bool get eCaminhao => tipo == TipoVeiculo.caminhao;
   bool get isTruck => eCaminhao;
 
+  bool get eEletrico => propulsao == TipoPropulsao.eletrico;
+  bool get isElectric => eEletrico;
+  bool get eHibrido => propulsao == TipoPropulsao.hibrido;
+  bool get isHybrid => eHibrido;
+  bool get eCombustao => propulsao == TipoPropulsao.combustao;
+  bool get isCombustion => eCombustao;
+  bool get usaEnergiaEletrica => eEletrico || eHibrido;
+  bool get usesElectricPower => usaEnergiaEletrica;
+
+  String get unidadeCapacidade => eEletrico ? 'kWh' : 'Litros';
+  String get capacityUnit => unidadeCapacidade;
+
+  String get unidadeConsumoPadrao => eEletrico ? 'km/kWh' : 'km/l';
+  String get defaultConsumptionUnit => unidadeConsumoPadrao;
+
   String get nome => '$marca $modelo'.trim();
   String get name => nome;
 
@@ -171,24 +309,32 @@ class Veiculo {
 
   String get typeLabel => rotuloTipo;
 
-  /// Capacidade efetiva do tanque (usa o valor cadastrado ou um padrão comum).
+  /// Capacidade efetiva do tanque (Litros) ou bateria (kWh nos elétricos).
   double get capacidadeEfetivaTanque {
     if (capacidadeTanque > 0) return capacidadeTanque;
+    if (eEletrico) {
+      if (eCarro) return 50.0; // 50 kWh padrão carro EV
+      if (eCaminhao) return 250.0; // 250 kWh padrão caminhão EV
+      return 3.5; // 3.5 kWh padrão moto elétrica
+    }
     if (eCarro) return 50.0;
     if (eCaminhao) return 300.0;
-    return 14.0; // Moto
+    return 14.0; // Moto a combustão
   }
 
   double get effectiveTankCapacity => capacidadeEfetivaTanque;
 
   Map<String, dynamic> toMap() => {
         'type': tipo.name,
+        'propulsion': propulsao.name,
         'brand': marca,
         'model': modelo,
         'year': ano,
         'plate': placa,
         'currentKm': kmAtual,
-        'transmission': eMoto ? '' : transmissao,
+        'transmission': eMoto
+            ? ''
+            : (eEletrico && transmissao.isEmpty ? 'Redutor Direto (Elétrico)' : transmissao),
         'fipeCode': codigoFipe,
         'fipeValue': valorFipe,
         'fipeReference': referenciaFipe,
@@ -220,11 +366,26 @@ class Veiculo {
       tipoResolvido = TipoVeiculo.carro;
     }
 
+    final marcaLida = (d['marca'] ?? d['brand'] ?? '').toString();
+    final modeloLido = (d['modelo'] ?? d['model'] ?? '').toString();
+    final propStr = (d['propulsao'] ?? d['propulsion'])?.toString().toLowerCase() ?? '';
+    TipoPropulsao propResolvida;
+    if (propStr == 'eletrico' || propStr == 'electric') {
+      propResolvida = TipoPropulsao.eletrico;
+    } else if (propStr == 'hibrido' || propStr == 'hybrid') {
+      propResolvida = TipoPropulsao.hibrido;
+    } else if (propStr == 'combustao' || propStr == 'combustion') {
+      propResolvida = TipoPropulsao.combustao;
+    } else {
+      propResolvida = inferirPropulsao(marcaLida, modeloLido);
+    }
+
     return Veiculo(
       id: doc.id,
       tipo: tipoResolvido,
-      marca: d['marca'] ?? d['brand'] ?? '',
-      modelo: d['modelo'] ?? d['model'] ?? '',
+      propulsao: propResolvida,
+      marca: marcaLida,
+      modelo: modeloLido,
       ano: d['ano'] ?? d['year'] ?? '',
       placa: d['placa'] ?? d['plate'] ?? '',
       kmAtual: (d['kmAtual'] ?? d['currentKm'] as num?)?.toInt() ?? 0,
@@ -250,5 +411,5 @@ class Veiculo {
   }
 }
 
-/// Alias para manter compatibilidade
+/// Alias para manter compatibilidade com o código existente
 typedef Vehicle = Veiculo;

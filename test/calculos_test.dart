@@ -3,6 +3,7 @@ import 'package:carcare/models/veiculo.dart';
 import 'package:carcare/utils/auxiliar_documentos.dart';
 import 'package:carcare/utils/auxiliar_rodizio.dart';
 import 'package:carcare/utils/calculos.dart';
+import 'package:carcare/utils/catalogo_manutencao.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -126,6 +127,83 @@ void main() {
       expect(pneu.kmRestante, equals(3000));
       expect(pneu.progresso, closeTo(0.7, 0.05));
       expect(pneu.precisaFazer, isFalse);
+    });
+  });
+
+  group('Veículos Elétricos e Híbridos (Carros, Motos e Caminhões)', () {
+    test('Infere propulsão elétrica e híbrida por marca/modelo', () {
+      expect(Veiculo.inferirPropulsao('BYD', 'Dolphin Mini'), equals(TipoPropulsao.eletrico));
+      expect(Veiculo.inferirPropulsao('BYD', 'Song Plus Híbrido'), equals(TipoPropulsao.hibrido));
+      expect(Veiculo.inferirPropulsao('Voltz', 'EVS'), equals(TipoPropulsao.eletrico));
+      expect(Veiculo.inferirPropulsao('VW / MAN', 'e-Delivery 11t Elétrico'), equals(TipoPropulsao.eletrico));
+      expect(Veiculo.inferirPropulsao('Volkswagen', 'Gol'), equals(TipoPropulsao.combustao));
+    });
+
+    test('Veículo 100% elétrico aceita apenas Eletricidade (kWh)', () {
+      final evCar = Veiculo(
+        tipo: TipoVeiculo.carro,
+        propulsao: TipoPropulsao.eletrico,
+        marca: 'BYD',
+        modelo: 'Dolphin',
+        ano: '2025',
+      );
+      final fuels = TiposCombustivel.paraVeiculo(evCar);
+      expect(fuels, equals([TiposCombustivel.eletricidade]));
+      expect(evCar.unidadeCapacidade, equals('kWh'));
+      expect(evCar.unidadeConsumoPadrao, equals('km/kWh'));
+    });
+
+    test('Catálogo de manutenção EV não exibe óleo de motor nem velas', () {
+      final evCar = Veiculo(
+        tipo: TipoVeiculo.carro,
+        propulsao: TipoPropulsao.eletrico,
+        marca: 'BYD',
+        modelo: 'Seal',
+        ano: '2025',
+      );
+      final items = CatalogoManutencao.itensPara(evCar).map((i) => i.nome).toList();
+      expect(items, isNot(contains('Óleo do motor')));
+      expect(items, isNot(contains('Velas de ignição')));
+      expect(items, isNot(contains('Correia dentada')));
+      expect(items, contains('Diagnóstico da bateria de alta tensão'));
+      expect(items, contains('Óleo da caixa redutora (transmissão EV)'));
+    });
+
+    test('Veículos elétricos e híbridos possuem isenção ambiental de rodízio', () {
+      final rodizioEv = AuxiliarRodizio.obterInformacoes(
+        'ABC1D23',
+        tipo: TipoVeiculo.carro,
+        propulsao: TipoPropulsao.eletrico,
+      );
+      expect(rodizioEv.eIsento, isTrue);
+      expect(rodizioEv.eHoje, isFalse);
+      expect(rodizioEv.nomeDia, contains('Isento'));
+    });
+
+    test('Avalia consumo em km/kWh para carro, moto e caminhão elétrico', () {
+      final avalCarroEv = Calculos.avaliarConsumo(
+        7.0,
+        tipoVeiculo: TipoVeiculo.carro,
+        propulsao: TipoPropulsao.eletrico,
+        tipoCombustivel: TiposCombustivel.eletricidade,
+      );
+      expect(avalCarroEv?.nivel, equals(NivelConsumo.otimo));
+
+      final avalMotoEv = Calculos.avaliarConsumo(
+        25.0,
+        tipoVeiculo: TipoVeiculo.moto,
+        propulsao: TipoPropulsao.eletrico,
+        tipoCombustivel: TiposCombustivel.eletricidade,
+      );
+      expect(avalMotoEv?.nivel, equals(NivelConsumo.otimo));
+
+      final avalCaminhaoEv = Calculos.avaliarConsumo(
+        1.2,
+        tipoVeiculo: TipoVeiculo.caminhao,
+        propulsao: TipoPropulsao.eletrico,
+        tipoCombustivel: TiposCombustivel.eletricidade,
+      );
+      expect(avalCaminhaoEv?.nivel, equals(NivelConsumo.otimo));
     });
   });
 }

@@ -138,6 +138,13 @@ class _ServicosProximosSheetState extends State<ServicosProximosSheet> {
                   onTap: () => _openGoogleMaps('posto de combustivel'),
                 ),
                 _ServiceCategoryCard(
+                  icon: Icons.ev_station,
+                  title: 'Eletropostos / Recarga EV',
+                  subtitle: 'Carregadores para elétricos e híbridos',
+                  color: Colors.green[600]!,
+                  onTap: () => _openGoogleMaps('eletroposto estacao de recarga carros eletricos'),
+                ),
+                _ServiceCategoryCard(
                   icon: Icons.build,
                   title: 'Oficinas Mecânicas',
                   subtitle: 'Revisão, freios e motor',
