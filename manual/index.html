@@ -353,8 +353,8 @@ service cloud.firestore {
 
       <!-- 16. Termômetro de Consumo -->
       <section id="termometro-consumo">
-        <h2>16. Termômetro Visual de Eficiência de Consumo</h2>
-        <p>O widget <code>ConsumptionThermometer</code> classifica visualmente o consumo médio do veículo através de uma barra de 3 estágios com indicador dinâmico:</p>
+        <h2>16. Termômetro Visual de Eficiência de Consumo (no Log do Veículo)</h2>
+        <p>O widget <code>TermometroConsumo</code> fica localizado exclusivamente dentro do <strong>Diário de Bordo (Log do Veículo)</strong> de cada carro, moto ou caminhão, garantindo que cada veículo tenha seu próprio termômetro individual sem misturar médias. Ele classifica visualmente o consumo médio através de uma barra de 3 estágios com indicador dinâmico:</p>
         <ul>
           <li><strong style="color: #10b981;">Verde (Muito Econômico):</strong> Alta autonomia por litro/m³.</li>
           <li><strong style="color: #f59e0b;">Amarelo (Normal / Moderado):</strong> Consumo padrão esperado para a categoria.</li>
@@ -377,7 +377,7 @@ service cloud.firestore {
       <!-- 18. Diário de Bordo -->
       <section id="diario-de-bordo">
         <h2>18. Diário de Bordo (Log Unificado do Veículo)</h2>
-        <p>A tela <code>VehicleLogScreen</code> consolida a linha do tempo completa do carro ou moto. Ela reúne em ordem cronológica reversa todas as manutenções executadas, abastecimentos, evolução do odômetro e gastos acumulados com filtros rápidos (*Tudo*, *Serviços* e *Abastecimentos*).</p>
+        <p>A tela <code>TelaHistoricoVeiculo</code> consolida a linha do tempo completa do carro, moto ou caminhão, trazendo o <strong>Termômetro de Consumo individual do veículo</strong>, o card de rotina de abastecimento e, em ordem cronológica reversa, todas as manutenções executadas, abastecimentos, evolução do odômetro e gastos acumulados com filtros rápidos (*Tudo*, *Serviços* e *Abastecimentos*).</p>
       </section>
 
       <!-- 19. Central de Dúvidas (FAQ) -->

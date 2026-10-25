@@ -140,9 +140,10 @@ class _TelaManualState extends State<TelaManual> {
     _FaqItem(
       category: 'Combustível & Consumo',
       icon: Icons.thermostat,
-      question: 'O que significa o Termômetro de Consumo?',
+      question: 'Onde fica e o que significa o Termômetro de Consumo?',
       answer:
-          'O termômetro visual indica se o consumo médio do veículo está eficiente:\n'
+          'Cada veículo possui seu próprio Termômetro de Consumo exclusivo dentro do "Diário de Bordo / Log do Veículo" '
+          '(basta tocar no veículo e abrir o Diário de Bordo). Ele indica se o consumo médio daquele veículo está eficiente:\n'
           '• Verde (Muito Econômico): Alta autonomia por litro/m³.\n'
           '• Amarelo (Normal / Moderado): Consumo padrão esperado para o combustível e tipo de veículo.\n'
           '• Vermelho (Alto Consumo): Indica consumo elevado. Vale a pena verificar calibragem dos pneus, '

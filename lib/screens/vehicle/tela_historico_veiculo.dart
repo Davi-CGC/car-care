@@ -274,7 +274,7 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                       const SizedBox(height: 16),
                     ],
 
-                    // Termômetro de Consumo
+                    // Termômetro de Consumo exclusivo deste veículo
                     if (avgConsumption != null) ...[
                       Builder(
                         builder: (_) {
@@ -288,8 +288,49 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                           return ConsumptionThermometer(
                             evaluation: eval,
                             unit: lastFuel?.unit == 'm³' ? 'km/m³' : 'km/l',
+                            vehicleName: v.name,
                           );
                         },
+                      ),
+                      const SizedBox(height: 16),
+                    ] else ...[
+                      Card(
+                        elevation: 0,
+                        color: isDark ? const Color(0xFF1E1E24) : Colors.grey.withValues(alpha: 0.06),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: AppColors.goldenPollen.withValues(alpha: 0.15),
+                                child: const Icon(Icons.thermostat, color: AppColors.goldenPollen),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Termômetro de Consumo • ${v.name}',
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Registre pelo menos 2 abastecimentos neste veículo para calcular a média (km/l) e ativar o termômetro de consumo.',
+                                      style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                     ],

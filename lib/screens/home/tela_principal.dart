@@ -29,7 +29,6 @@ import '../../widgets/estado_vazio.dart';
 import '../../widgets/itens_registro.dart';
 import '../../widgets/layout.dart';
 import '../../widgets/logo_app.dart';
-import '../../widgets/termometro_consumo.dart';
 import '../fuel/historico_postos_sheet.dart';
 import '../manual/tela_manual.dart';
 import '../reports/aba_relatorios.dart';
@@ -351,23 +350,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
             }),
           ],
         ),
-        if (avgConsumption != null) ...[
-          const SizedBox(height: 16),
-          Builder(
-            builder: (_) {
-              final eval = Calculations.evaluateConsumption(
-                avgConsumption,
-                vehicleType: vehicles.isEmpty ? VehicleType.carro : vehicles.first.type,
-                fuelType: fuels.isEmpty ? FuelTypes.gasolina : fuels.first.fuelType,
-              );
-              if (eval == null) return const SizedBox.shrink();
-              return ConsumptionThermometer(
-                evaluation: eval,
-                unit: fuels.isNotEmpty && fuels.first.isGnv ? 'km/m³' : 'km/l',
-              );
-            },
-          ),
-        ],
         SectionTitle(
           'Alertas de Serviços',
           trailing: alerts.isEmpty
@@ -585,32 +567,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
               );
             },
           ),
-          Builder(
-            builder: (_) {
-              final vObj = _selectedVehicleFilter != null
-                  ? vehicles.firstWhere((x) => x.id == _selectedVehicleFilter, orElse: () => vehicles.first)
-                  : vehicles.firstWhere((x) => x.id == filtered.first.vehicleId, orElse: () => vehicles.first);
-              final vFuels = _selectedVehicleFilter != null
-                  ? filtered
-                  : filtered.where((f) => f.vehicleId == vObj.id).toList();
-              final vConsumption = Calculations.averageConsumption(vFuels);
-              if (vConsumption == null || vFuels.isEmpty) return const SizedBox.shrink();
-              final lastFuel = vFuels.first;
-              final eval = Calculations.evaluateConsumption(
-                vConsumption,
-                vehicleType: vObj.type,
-                fuelType: lastFuel.fuelType,
-              );
-              if (eval == null) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ConsumptionThermometer(
-                  evaluation: eval,
-                  unit: lastFuel.unit == 'm³' ? 'km/m³' : 'km/l',
-                ),
-              );
-            },
-          ),
           ...filtered.map((f) => FuelTile(
                 record: f,
                 onTap: () => _showFuelDetailsModal(context, vehicles, f, fuels),
@@ -772,7 +728,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                       foregroundColor: AppColors.obsidian,
                     ),
                     icon: const Icon(Icons.menu_book),
-                    label: const Text('Diário de Bordo / Log do Veículo'),
+                    label: const Text('Diário de Bordo & Termômetro (Log)'),
                     onPressed: () {
                       Navigator.pop(context);
                       Navigator.push(

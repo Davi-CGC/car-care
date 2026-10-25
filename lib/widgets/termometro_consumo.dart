@@ -8,11 +8,13 @@ import '../utils/calculos.dart';
 class TermometroConsumo extends StatelessWidget {
   final AvaliacaoConsumo avaliacao;
   final String unidade;
+  final String? nomeVeiculo;
 
   const TermometroConsumo({
     super.key,
     required this.avaliacao,
     this.unidade = 'km/l',
+    this.nomeVeiculo,
   });
 
   Color get _cor => switch (avaliacao.nivel) {
@@ -56,7 +58,9 @@ class TermometroConsumo extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Termômetro de Consumo',
+                        nomeVeiculo != null && nomeVeiculo!.isNotEmpty
+                            ? 'Termômetro de Consumo • $nomeVeiculo'
+                            : 'Termômetro de Consumo',
                         style: tema.textTheme.labelMedium?.copyWith(
                           color: eEscuro ? Colors.white70 : Colors.black54,
                           fontWeight: FontWeight.bold,
@@ -155,5 +159,10 @@ class ConsumptionThermometer extends TermometroConsumo {
     super.key,
     required AvaliacaoConsumo evaluation,
     String unit = 'km/l',
-  }) : super(avaliacao: evaluation, unidade: unit);
+    String? vehicleName,
+  }) : super(
+         avaliacao: evaluation,
+         unidade: unit,
+         nomeVeiculo: vehicleName,
+       );
 }
