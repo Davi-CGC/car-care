@@ -395,7 +395,7 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '⚡ ${v.propulsion.shortLabel}',
+                            v.propulsion.shortLabel,
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,

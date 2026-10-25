@@ -122,7 +122,7 @@ class CartaoVeiculo extends StatelessWidget {
                           return Text(
                             veiculo.eMoto
                                 ? 'Isento de rodízio'
-                                : '⚡ ${rodizio.nomeDia} de rodízio',
+                                : '${rodizio.nomeDia} de rodízio',
                             style: TextStyle(
                               fontSize: 11,
                               color: veiculo.usaEnergiaEletrica ? Colors.green[600] : Colors.grey,

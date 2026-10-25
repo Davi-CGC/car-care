@@ -202,22 +202,35 @@ class Calculos {
     }
 
     final ordenados = [...abastecimentos]..sort((a, b) => a.km.compareTo(b.km));
+    final ordenadosPorData = [...abastecimentos]..sort((a, b) => a.data.compareTo(b.data));
     final total = ordenados.length;
     final qtdTanqueCheio = ordenados.where((f) => f.tanqueCheio).length;
     final pctTanqueCheio =
         total > 0 ? (qtdTanqueCheio / total) * 100 : 0.0;
 
-    // Distância e frequência entre abastecimentos consecutivos
+    // Distância entre abastecimentos consecutivos (por odômetro)
     final distancias = <double>[];
-    final intervalosDias = <double>[];
     for (int i = 1; i < ordenados.length; i++) {
       final anterior = ordenados[i - 1];
       final atual = ordenados[i];
       final dKm = (atual.km - anterior.km).toDouble();
       if (dKm > 0) distancias.add(dKm);
+    }
 
-      final diffDias = atual.data.difference(anterior.data).inHours / 24.0;
-      if (diffDias > 0) intervalosDias.add(diffDias);
+    // Frequência em dias corridos entre datas distintas de abastecimento
+    final datasUnicas = <DateTime>[];
+    for (final reg in ordenadosPorData) {
+      final dia = DateTime(reg.data.year, reg.data.month, reg.data.day);
+      if (datasUnicas.isEmpty || datasUnicas.last != dia) {
+        datasUnicas.add(dia);
+      }
+    }
+    final intervalosDias = <double>[];
+    for (int i = 1; i < datasUnicas.length; i++) {
+      final diffDias = datasUnicas[i].difference(datasUnicas[i - 1]).inDays.toDouble();
+      if (diffDias >= 1.0) {
+        intervalosDias.add(diffDias);
+      }
     }
 
     final mediaDistancia = distancias.isNotEmpty
@@ -226,7 +239,7 @@ class Calculos {
 
     final mediaFrequencia = intervalosDias.isNotEmpty
         ? intervalosDias.reduce((a, b) => a + b) / intervalosDias.length
-        : 0.0;
+        : (ordenados.length >= 2 ? 1.0 : 0.0);
 
     // Consumo médio geral e por tanque cheio
     final mediaGeral = consumoMedio(ordenados);
@@ -242,21 +255,23 @@ class Calculos {
       autonomiaEst = mediaDistancia * 1.25;
     }
 
-    // Projeção mensal em R$
+    // Projeção mensal em R$ (evita distorções quando há múltiplos registros no mesmo dia)
     double projecao = 0.0;
     final totalGasto = ordenados.fold<double>(0, (soma, f) => soma + f.precoTotal);
-    if (mediaFrequencia > 0 && total > 0) {
-      final custoMedioAbastecimento = totalGasto / total;
-      final paradasPorMes = 30.0 / mediaFrequencia;
-      projecao = paradasPorMes * custoMedioAbastecimento;
-    } else if (ordenados.length >= 2) {
-      final primeiraData = ordenados.first.data;
-      final ultimaData = ordenados.last.data;
-      final diasTotais =
-          math.max(1.0, ultimaData.difference(primeiraData).inHours / 24.0);
-      projecao = (totalGasto / diasTotais) * 30.0;
+    if (datasUnicas.length >= 2 && mediaFrequencia >= 1.0) {
+      final diasTotais = math.max(
+        1.0,
+        datasUnicas.last.difference(datasUnicas.first).inDays.toDouble(),
+      );
+      if (diasTotais >= 3.0) {
+        projecao = (totalGasto / diasTotais) * 30.0;
+      } else {
+        final custoMedioPorDia = totalGasto / datasUnicas.length;
+        final paradasPorMes = (30.0 / math.max(7.0, mediaFrequencia)).clamp(1.0, 10.0);
+        projecao = paradasPorMes * custoMedioPorDia;
+      }
     } else if (total > 0) {
-      projecao = ordenados.first.precoTotal;
+      projecao = totalGasto;
     }
 
     return EstatisticasRotinaCombustivel(
@@ -278,11 +293,22 @@ class Calculos {
   /// Média diária de distância percorrida (km/dia).
   static double distanciaMediaDiaria(List<RegistroAbastecimento> abastecimentos) {
     if (abastecimentos.length < 2) return 0.0;
-    final ordenados = [...abastecimentos]..sort((a, b) => a.km.compareTo(b.km));
-    final distancia = ordenados.last.km - ordenados.first.km;
-    final dias = math.max(
-        1.0, ordenados.last.data.difference(ordenados.first.data).inHours / 24.0);
+    final ordenadosKm = [...abastecimentos]..sort((a, b) => a.km.compareTo(b.km));
+    final ordenadosData = [...abastecimentos]..sort((a, b) => a.data.compareTo(b.data));
+    final distancia = ordenadosKm.last.km - ordenadosKm.first.km;
     if (distancia <= 0) return 0.0;
+
+    final primeiroDia = DateTime(
+      ordenadosData.first.data.year,
+      ordenadosData.first.data.month,
+      ordenadosData.first.data.day,
+    );
+    final ultimoDia = DateTime(
+      ordenadosData.last.data.year,
+      ordenadosData.last.data.month,
+      ordenadosData.last.data.day,
+    );
+    final dias = math.max(1.0, ultimoDia.difference(primeiroDia).inDays.abs().toDouble());
     return distancia / dias;
   }
 

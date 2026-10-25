@@ -246,7 +246,7 @@ class _LembretesVeiculoSheetState extends State<LembretesVeiculoSheet> {
                       if (_vehicle.usesElectricPower) ...[
                         const SizedBox(height: 6),
                         Text(
-                          '⚡ Dica EV/Híbrido: diversos estados e capitais oferecem isenção total ou restituição de quota-parte do IPVA para veículos elétricos e híbridos.',
+                          'Dica EV/Híbrido: diversos estados e capitais oferecem isenção total ou restituição de quota-parte do IPVA para veículos elétricos e híbridos.',
                           style: const TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600),
                         ),
                       ],

@@ -307,7 +307,7 @@ service cloud.firestore {
       <section id="crud-veiculos">
         <h2>13. Gestão de Veículos, Elétricos/Híbridos, Caminhões, FIPE &amp; Rodízio</h2>
         <h3>Suporte Completo a Carros, Motos e Caminhões Elétricos (EV) e Híbridos</h3>
-        <p>O CarCare adapta toda a sua interface e regras de negócio conforme a propulsão do veículo (<code>Combustão</code>, <code>Híbrido</code> ou <code>100% Elétrico ⚡</code>), com detecção automática ao escolher marcas e modelos conhecidos (BYD, Tesla, Voltz, Watts, GWM, Volvo Electric, VW e-Delivery):</p>
+        <p>O CarCare adapta toda a sua interface e regras de negócio conforme a propulsão do veículo (<code>Combustão</code>, <code>Híbrido</code> ou <code>100% Elétrico</code>), com detecção automática ao escolher marcas e modelos conhecidos (BYD, Tesla, Voltz, Watts, GWM, Volvo Electric, VW e-Delivery):</p>
         <ul>
           <li><strong>100% Elétrico:</strong> oculta combustíveis fósseis (Gasolina, Etanol, Diesel, GNV) e opera exclusivamente com <strong>Eletricidade (kWh)</strong>, calcula eficiência em <strong>km/kWh</strong>, mede capacidade da bateria em <strong>kWh</strong>, sugere Eletropostos e exibe apenas itens de manutenção de veículos elétricos (bateria de alta tensão SOH, arrefecimento do inversor/bateria, óleo da transmissão redutora EV, freios regenerativos), sem exibir óleo de motor, velas, correia dentada ou escapamento.</li>
           <li><strong>Híbrido (HEV / PHEV):</strong> permite registrar tanto abastecimentos líquidos (Gasolina/Etanol/Diesel) quanto recargas elétricas (kWh), adiciona itens de revisão do sistema híbrido ao catálogo e calibra o termômetro de consumo para médias híbridas.</li>
@@ -398,12 +398,12 @@ service cloud.firestore {
 
         <details class="faq-item">
           <summary>Como cadastrar meu carro, moto ou caminhão?</summary>
-          <div class="faq-answer">Na aba "Veículos" ou no botão flutuante da tela inicial, toque em "Novo Veículo". Selecione se o veículo é um <strong>Carro</strong>, <strong>Moto</strong> ou <strong>Caminhão</strong>, escolha a motorização (<strong>Combustão</strong>, <strong>Híbrido</strong> ou <strong>100% Elétrico ⚡</strong>) e escolha a <strong>Marca</strong> e o <strong>Modelo</strong> diretamente na lista pesquisável. Você também pode tocar em "Consultar Tabela FIPE" no card do veículo para puxar automaticamente o ano oficial e o valor médio de mercado!</div>
+          <div class="faq-answer">Na aba "Veículos" ou no botão flutuante da tela inicial, toque em "Novo Veículo". Selecione se o veículo é um <strong>Carro</strong>, <strong>Moto</strong> ou <strong>Caminhão</strong>, escolha a motorização (<strong>Combustão</strong>, <strong>Híbrido</strong> ou <strong>100% Elétrico</strong>) e escolha a <strong>Marca</strong> e o <strong>Modelo</strong> diretamente na lista pesquisável. Você também pode tocar em "Consultar Tabela FIPE" no card do veículo para puxar automaticamente o ano oficial e o valor médio de mercado!</div>
         </details>
 
         <details class="faq-item">
           <summary>Como funciona o suporte para Carros, Motos e Caminhões Elétricos ou Híbridos?</summary>
-          <div class="faq-answer">Ao cadastrar ou editar um veículo, você pode selecionar a motorização entre "Combustão", "Híbrido" ou "100% Elétrico ⚡" (além disso, ao escolher marcas/modelos conhecidos como BYD, Tesla, Voltz, Watts, GWM Haval ou VW e-Delivery, o app detecta a propulsão automaticamente!). Quando o veículo é 100% Elétrico, o app adapta tudo:
+          <div class="faq-answer">Ao cadastrar ou editar um veículo, você pode selecionar a motorização entre "Combustão", "Híbrido" ou "100% Elétrico" (além disso, ao escolher marcas/modelos conhecidos como BYD, Tesla, Voltz, Watts, GWM Haval ou VW e-Delivery, o app detecta a propulsão automaticamente!). Quando o veículo é 100% Elétrico, o app adapta tudo:
 • Recargas exclusivamente em Eletricidade (kWh) e eficiência medida em km/kWh (sem opções de Gasolina, Etanol ou GNV).
 • Capacidade da bateria em kWh e sugestões de Eletropostos (Tupinambá, Shell Recharge, Zletric, Wallbox).
 • Catálogo de manutenção exclusivo para veículos elétricos (bateria de alta tensão, arrefecimento do inversor, óleo do redutor EV, freios regenerativos), ocultando itens de motor a combustão (óleo de motor, velas, correia dentada, escapamento).

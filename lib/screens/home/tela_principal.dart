@@ -10,6 +10,7 @@ import '../../repositories/repositorio_manutencao.dart';
 import '../../repositories/repositorio_veiculo.dart';
 import '../../services/servico_autenticacao.dart';
 import '../../services/servico_fipe.dart';
+import '../../services/servico_postos_proximos.dart';
 import '../../theme/controlador_tema.dart';
 import '../../theme/cores_app.dart';
 import '../../utils/auxiliar_rodizio.dart';
@@ -272,7 +273,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
 
     final totalSpentMonth =
         Calculations.maintenanceTotal(monthMaintenances) + Calculations.fuelTotal(monthFuels);
-    final avgConsumption = Calculations.averageConsumption(fuels);
 
     return ListView(
       padding: pagePadding(context),
@@ -334,20 +334,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
               value: '${alerts.length}',
               color: alerts.isNotEmpty ? AppColors.danger : AppColors.success,
             ),
-            SummaryCard(
-              icon: Icons.local_gas_station,
-              label: 'Consumo médio',
-              value: avgConsumption != null ? '${formatNumber(avgConsumption, 1)} km/l' : '--',
-            ),
-            Builder(builder: (_) {
-              final dailyKm = Calculations.dailyAverageDistance(fuels);
-              if (dailyKm <= 0) return const SizedBox.shrink();
-              return SummaryCard(
-                icon: Icons.route,
-                label: 'Média diária',
-                value: '${formatNumber(dailyKm, 1)} km/dia',
-              );
-            }),
           ],
         ),
         SectionTitle(
@@ -1016,7 +1002,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            f.isElectric ? 'Recarga Elétrica ⚡' : 'Abastecimento',
+                            f.isElectric ? 'Recarga Elétrica' : 'Abastecimento',
                             style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           if (v != null) Text(v.name, style: const TextStyle(color: Colors.grey)),
@@ -1093,8 +1079,211 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
   }
 }
 
+/// Bloquinho rolável inline que exibe até 5 opções por vez embaixo do campo
+/// e filtra automaticamente conforme a pessoa digita ou rola a lista.
+class _CaixaOpcoesRolavel extends StatefulWidget {
+  final List<String> opcoes;
+  final String valorSelecionado;
+  final String filtroTexto;
+  final ValueChanged<String> aoSelecionar;
+  final String Function(String)? subtituloOpcao;
+  final IconData Function(String)? iconeOpcao;
+  final String? rotuloCabecalho;
+
+  const _CaixaOpcoesRolavel({
+    required this.opcoes,
+    required this.valorSelecionado,
+    required this.filtroTexto,
+    required this.aoSelecionar,
+    this.subtituloOpcao,
+    this.iconeOpcao,
+    this.rotuloCabecalho,
+  });
+
+  @override
+  State<_CaixaOpcoesRolavel> createState() => _CaixaOpcoesRolavelState();
+}
+
+class _CaixaOpcoesRolavelState extends State<_CaixaOpcoesRolavel> {
+  final ScrollController _scrollCtrl = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final eEscuro = tema.brightness == Brightness.dark;
+    final q = widget.filtroTexto.trim().toLowerCase();
+
+    // Se o texto digitado for exatamente igual ao selecionado, mostra todas as opções
+    // para que a pessoa possa rolar o bloquinho livremente se quiser trocar.
+    final mostrarTodas = q.isEmpty ||
+        (widget.valorSelecionado.trim().isNotEmpty &&
+            q == widget.valorSelecionado.trim().toLowerCase());
+
+    final filtradas = mostrarTodas
+        ? widget.opcoes
+        : widget.opcoes.where((item) => item.toLowerCase().contains(q)).toList();
+
+    if (filtradas.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: eEscuro ? const Color(0xFF1A1A20) : const Color(0xFFF7F7F9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+        ),
+        child: const Text(
+          'Nenhuma opção encontrada.',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      );
+    }
+
+    // Altura de ~42px por linha -> 5 opções visíveis por vez (~210px)
+    final double alturaItem = widget.subtituloOpcao != null ? 50.0 : 42.0;
+    final int qtdVisivel = filtradas.length < 5 ? filtradas.length : 5;
+    final double alturaCaixa = qtdVisivel * alturaItem;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(
+        color: eEscuro ? const Color(0xFF1A1A20) : const Color(0xFFF7F7F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.goldenPollen.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (widget.rotuloCabecalho != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.goldenPollen.withValues(alpha: 0.10),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.swipe_vertical, size: 13, color: AppColors.goldenPollen),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      widget.rotuloCabecalho!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${filtradas.length} opções',
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          SizedBox(
+            height: alturaCaixa,
+            child: Scrollbar(
+              controller: _scrollCtrl,
+              thumbVisibility: filtradas.length > 5,
+              child: ListView.separated(
+                controller: _scrollCtrl,
+                padding: EdgeInsets.zero,
+                itemCount: filtradas.length,
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  color: Colors.grey.withValues(alpha: 0.15),
+                ),
+                itemBuilder: (context, index) {
+                  final item = filtradas[index];
+                  final selecionado =
+                      item.toLowerCase() == widget.valorSelecionado.trim().toLowerCase();
+                  final subtitulo = widget.subtituloOpcao?.call(item);
+                  final icone = widget.iconeOpcao?.call(item);
+
+                  return InkWell(
+                    onTap: () => widget.aoSelecionar(item),
+                    child: Container(
+                      height: alturaItem,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      color: selecionado
+                          ? AppColors.goldenPollen.withValues(alpha: 0.16)
+                          : Colors.transparent,
+                      child: Row(
+                        children: [
+                          if (icone != null) ...[
+                            Icon(
+                              icone,
+                              size: 17,
+                              color: selecionado ? AppColors.goldenPollen : Colors.grey,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: subtitulo != null && subtitulo.isNotEmpty
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight:
+                                              selecionado ? FontWeight.bold : FontWeight.w500,
+                                          color: selecionado ? AppColors.goldenPollen : null,
+                                        ),
+                                      ),
+                                      Text(
+                                        subtitulo,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                      ),
+                                    ],
+                                  )
+                                : Text(
+                                    item,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight:
+                                          selecionado ? FontWeight.bold : FontWeight.normal,
+                                      color: selecionado ? AppColors.goldenPollen : null,
+                                    ),
+                                  ),
+                          ),
+                          if (selecionado)
+                            const Icon(Icons.check_circle, size: 17, color: AppColors.goldenPollen),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ==========================================
-// FORMULÁRIO DE VEÍCULO (COM BUSCA DE MARCA E MODELO POR MARCA)
+// FORMULÁRIO DE VEÍCULO (COM BLOQUINHO DE 5 OPÇÕES E FIPE AUTOMÁTICA)
 // ==========================================
 class _VehicleFormSheet extends StatefulWidget {
   final Vehicle? existing;
@@ -1112,6 +1301,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
 
   late VehicleType _type;
   late VehiclePropulsion _propulsion;
+  bool _manualPropulsionOverride = false;
   late final TextEditingController _brand;
   late final TextEditingController _model;
   late final TextEditingController _year;
@@ -1123,7 +1313,12 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
 
   List<FipeItem> _fipeBrands = [];
   List<FipeItem> _fipeModels = [];
+  List<FipeItem> _fipeYears = [];
+  FipeItem? _matchedFipeBrand;
+  FipeItem? _matchedFipeModel;
+  FipeResult? _autoFipeResult;
   bool _loadingFipeModels = false;
+  bool _loadingFipePrice = false;
 
   @override
   void initState() {
@@ -1145,8 +1340,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
             : 'Automático')
         : 'Manual';
     _plate.addListener(() => setState(() {}));
-    _brand.addListener(() => setState(() {}));
-    _loadFipeBrandsForType(_type, initialBrand: _brand.text);
+    _loadFipeBrandsForType(_type, initialBrand: _brand.text, initialModel: _model.text);
   }
 
   @override
@@ -1160,47 +1354,141 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     super.dispose();
   }
 
-  Future<void> _loadFipeBrandsForType(VehicleType type, {String? initialBrand}) async {
+  FipeItem? _findBestFipeMatch(List<FipeItem> list, String query) {
+    final clean = query.trim().toLowerCase();
+    if (clean.isEmpty || list.isEmpty) return null;
+    for (final item in list) {
+      if (item.name.toLowerCase() == clean) return item;
+    }
+    for (final item in list) {
+      if (item.name.toLowerCase().startsWith(clean) ||
+          clean.startsWith(item.name.toLowerCase())) {
+        return item;
+      }
+    }
+    for (final item in list) {
+      if (item.name.toLowerCase().contains(clean) ||
+          clean.contains(item.name.toLowerCase())) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _loadFipeBrandsForType(
+    VehicleType type, {
+    String? initialBrand,
+    String? initialModel,
+  }) async {
     try {
       final list = await _fipe.brands(type);
       if (!mounted || _type != type) return;
       setState(() => _fipeBrands = list);
       if (initialBrand != null && initialBrand.trim().isNotEmpty) {
-        _loadFipeModelsForBrandName(initialBrand.trim());
+        await _loadFipeModelsForBrandName(initialBrand.trim(), initialModel: initialModel);
       }
     } catch (_) {
       // Caso esteja offline, o catálogo local (CatalogoVeiculos) continua funcionando normalmente.
     }
   }
 
-  Future<void> _loadFipeModelsForBrandName(String brandName) async {
+  Future<void> _loadFipeModelsForBrandName(String brandName, {String? initialModel}) async {
     if (brandName.trim().isEmpty || _fipeBrands.isEmpty) {
-      setState(() => _fipeModels = []);
+      setState(() {
+        _matchedFipeBrand = null;
+        _fipeModels = [];
+      });
       return;
     }
-    final clean = brandName.trim().toLowerCase();
-    final match = _fipeBrands.cast<FipeItem?>().firstWhere(
-          (b) =>
-              b != null &&
-              (b.name.toLowerCase() == clean ||
-                  b.name.toLowerCase().contains(clean) ||
-                  clean.contains(b.name.toLowerCase())),
-          orElse: () => null,
-        );
+    final match = _findBestFipeMatch(_fipeBrands, brandName);
     if (match == null) {
-      setState(() => _fipeModels = []);
+      setState(() {
+        _matchedFipeBrand = null;
+        _fipeModels = [];
+      });
       return;
     }
+    _matchedFipeBrand = match;
     setState(() => _loadingFipeModels = true);
     try {
       final models = await _fipe.models(_type, match.code);
       if (mounted) {
         setState(() => _fipeModels = models);
+        final modelToLookup = initialModel ?? _model.text.trim();
+        if (modelToLookup.isNotEmpty) {
+          await _tryAutoLookupFipe(modelToLookup);
+        }
       }
     } catch (_) {
       // Ignora falha de rede e mantém catálogo local
     } finally {
       if (mounted) setState(() => _loadingFipeModels = false);
+    }
+  }
+
+  /// Quando o usuário escolhe ou digita o modelo, busca automaticamente os anos e o preço na Tabela FIPE!
+  Future<void> _tryAutoLookupFipe(String modelName) async {
+    final brandItem = _matchedFipeBrand ?? _findBestFipeMatch(_fipeBrands, _brand.text);
+    if (brandItem == null || _fipeModels.isEmpty || modelName.trim().isEmpty) return;
+
+    final modelItem = _findBestFipeMatch(_fipeModels, modelName);
+    if (modelItem == null) return;
+
+    _matchedFipeModel = modelItem;
+    setState(() => _loadingFipePrice = true);
+    try {
+      final years = await _fipe.years(_type, brandItem.code, modelItem.code);
+      if (!mounted) return;
+      setState(() => _fipeYears = years);
+      if (years.isEmpty) return;
+
+      final typedYear = _year.text.trim();
+      FipeItem selectedYear = years.first;
+      if (typedYear.isNotEmpty) {
+        final found = years.cast<FipeItem?>().firstWhere(
+              (y) => y != null && y.name.contains(typedYear),
+              orElse: () => null,
+            );
+        if (found != null) selectedYear = found;
+      } else {
+        // Preenche automaticamente o ano com o ano do modelo FIPE se estiver em branco
+        final matchDigits = RegExp(r'\b(19\d\d|20\d\d)\b').firstMatch(selectedYear.name);
+        if (matchDigits != null) {
+          _year.text = matchDigits.group(0)!;
+        }
+      }
+
+      final price = await _fipe.price(_type, brandItem.code, modelItem.code, selectedYear.code);
+      if (mounted) {
+        setState(() => _autoFipeResult = price);
+      }
+    } catch (_) {
+      // Ignora silenciosamente falhas de rede na consulta automática
+    } finally {
+      if (mounted) setState(() => _loadingFipePrice = false);
+    }
+  }
+
+  Future<void> _onYearSelectedOrChanged(String yearText) async {
+    final brandItem = _matchedFipeBrand ?? _findBestFipeMatch(_fipeBrands, _brand.text);
+    final modelItem = _matchedFipeModel ?? _findBestFipeMatch(_fipeModels, _model.text);
+    if (brandItem == null || modelItem == null || _fipeYears.isEmpty) return;
+
+    final foundYear = _fipeYears.cast<FipeItem?>().firstWhere(
+          (y) => y != null && y.name.toLowerCase().contains(yearText.trim().toLowerCase()),
+          orElse: () => null,
+        );
+    if (foundYear == null) return;
+
+    setState(() => _loadingFipePrice = true);
+    try {
+      final price = await _fipe.price(_type, brandItem.code, modelItem.code, foundYear.code);
+      if (mounted) {
+        setState(() => _autoFipeResult = price);
+      }
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _loadingFipePrice = false);
     }
   }
 
@@ -1229,7 +1517,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
 
   void _autoDetectPropulsion(String brand, String model) {
     final inferred = Vehicle.inferirPropulsao(brand, model);
-    if (inferred != VehiclePropulsion.combustao) {
+    if (!_manualPropulsionOverride || inferred != VehiclePropulsion.combustao) {
       _propulsion = inferred;
       if (inferred != VehiclePropulsion.combustao) {
         _transmission = 'Automático';
@@ -1242,13 +1530,14 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
     setState(() {
       _brand.text = brand;
       if (previousBrand.toLowerCase() != brand.trim().toLowerCase()) {
-        // Ao trocar de marca, limpa o modelo anterior caso não pertença à nova marca
         final modelsOfNewBrand = CatalogoVeiculos.modelosPara(_type, brand);
         if (_model.text.trim().isNotEmpty &&
             !modelsOfNewBrand.any((m) => m.toLowerCase() == _model.text.trim().toLowerCase())) {
           _model.clear();
         }
         _fipeModels = [];
+        _fipeYears = [];
+        _autoFipeResult = null;
       }
       _autoDetectPropulsion(brand, _model.text);
     });
@@ -1262,55 +1551,12 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
         final detectedBrand = CatalogoVeiculos.encontrarMarcaDoModelo(_type, model);
         if (detectedBrand != null) {
           _brand.text = detectedBrand;
-          _loadFipeModelsForBrandName(detectedBrand);
+          _loadFipeModelsForBrandName(detectedBrand, initialModel: model);
         }
       }
       _autoDetectPropulsion(_brand.text, model);
     });
-  }
-
-  Future<void> _openBrandPickerModal() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (ctx) => _SearchableListModal(
-        title: 'Selecionar Marca (${_type.label})',
-        searchHint: 'Pesquisar marca (ex: Volkswagen, Honda, BYD...)',
-        items: _availableBrands,
-        currentValue: _brand.text.trim(),
-        emptyMessage: 'Nenhuma marca encontrada. Você pode usar o nome digitado.',
-      ),
-    );
-    if (selected != null && selected.trim().isNotEmpty) {
-      _selectBrand(selected.trim());
-    }
-  }
-
-  Future<void> _openModelPickerModal() async {
-    final brandName = _brand.text.trim();
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (ctx) => _SearchableListModal(
-        title: brandName.isNotEmpty
-            ? 'Modelos — $brandName'
-            : 'Selecionar Modelo (${_type.label})',
-        subtitle: brandName.isEmpty
-            ? 'Dica: selecione a marca primeiro para filtrar apenas os modelos dela'
-            : null,
-        searchHint: brandName.isNotEmpty
-            ? 'Buscar modelo da $brandName...'
-            : 'Pesquisar modelo (ex: Gol, Dolphin, CG 160...)',
-        items: _availableModelsForCurrentBrand,
-        currentValue: _model.text.trim(),
-        emptyMessage: 'Modelo não encontrado na lista. Toque abaixo para usar o nome digitado.',
-      ),
-    );
-    if (selected != null && selected.trim().isNotEmpty) {
-      _selectModel(selected.trim());
-    }
+    _tryAutoLookupFipe(model);
   }
 
   Future<void> _save() async {
@@ -1327,6 +1573,10 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
         resolvedTransmission = _transmission;
       }
 
+      final fipeCode = _autoFipeResult?.code ?? widget.existing?.fipeCode ?? '';
+      final fipeValue = _autoFipeResult?.value ?? widget.existing?.fipeValue ?? '';
+      final fipeReference = _autoFipeResult?.reference ?? widget.existing?.fipeReference ?? '';
+
       final vehicle = Vehicle(
         id: widget.existing?.id ?? '',
         type: _type,
@@ -1337,9 +1587,9 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
         plate: _plate.text.trim().toUpperCase(),
         currentKm: int.tryParse(_km.text.trim()) ?? 0,
         transmission: resolvedTransmission,
-        fipeCode: widget.existing?.fipeCode ?? '',
-        fipeValue: widget.existing?.fipeValue ?? '',
-        fipeReference: widget.existing?.fipeReference ?? '',
+        fipeCode: fipeCode,
+        fipeValue: fipeValue,
+        fipeReference: fipeReference,
         tankCapacity: parseNumber(_tankCapacity.text.trim()) ?? 0.0,
         ipvaDueMonth: widget.existing?.ipvaDueMonth,
         ipvaPaid: widget.existing?.ipvaPaid ?? false,
@@ -1361,7 +1611,12 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
 
       if (mounted) {
         Navigator.pop(context);
-        showMessage(context, 'Veículo salvo com sucesso!');
+        showMessage(
+          context,
+          _autoFipeResult != null
+              ? 'Veículo e valor Tabela FIPE (${_autoFipeResult!.value}) salvos com sucesso!'
+              : 'Veículo salvo com sucesso!',
+        );
       }
     } catch (e) {
       if (mounted) showMessage(context, 'Erro ao salvar veículo: $e', error: true);
@@ -1373,7 +1628,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final popularBrands = CatalogoVeiculos.marcasPara(_type).take(8).toList();
+    final brandsList = _availableBrands;
     final modelsForBrand = _availableModelsForCurrentBrand;
     final isElectric = _propulsion == VehiclePropulsion.eletrico;
     final isHybrid = _propulsion == VehiclePropulsion.hibrido;
@@ -1416,10 +1671,27 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               ),
               const SizedBox(height: 12),
               SegmentedButton<VehicleType>(
+                showSelectedIcon: false,
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 segments: const [
-                  ButtonSegment(value: VehicleType.carro, label: Text('Carro'), icon: Icon(Icons.directions_car)),
-                  ButtonSegment(value: VehicleType.moto, label: Text('Moto'), icon: Icon(Icons.two_wheeler)),
-                  ButtonSegment(value: VehicleType.caminhao, label: Text('Caminhão'), icon: Icon(Icons.local_shipping)),
+                  ButtonSegment(
+                    value: VehicleType.carro,
+                    label: Text('Carro', maxLines: 1, softWrap: false),
+                    icon: Icon(Icons.directions_car, size: 18),
+                  ),
+                  ButtonSegment(
+                    value: VehicleType.moto,
+                    label: Text('Moto', maxLines: 1, softWrap: false),
+                    icon: Icon(Icons.two_wheeler, size: 18),
+                  ),
+                  ButtonSegment(
+                    value: VehicleType.caminhao,
+                    label: Text('Caminhão', maxLines: 1, softWrap: false),
+                    icon: Icon(Icons.local_shipping, size: 18),
+                  ),
                 ],
                 selected: {_type},
                 onSelectionChanged: (set) {
@@ -1433,39 +1705,47 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                     }
                     _fipeBrands = [];
                     _fipeModels = [];
+                    _fipeYears = [];
+                    _autoFipeResult = null;
                   });
                   _loadFipeBrandsForType(nextType);
                 },
               ),
               const SizedBox(height: 12),
 
-              // SELETOR DE MOTORIZAÇÃO (COMBUSTÃO / HÍBRIDO / 100% ELÉTRICO)
+              // SELETOR DE MOTORIZAÇÃO (COMBUSTÃO / HÍBRIDO / ELÉTRICO) SEM QUEBRA DE TEXTO
               const Text(
                 'Motorização / Energia:',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
               ),
               const SizedBox(height: 6),
               SegmentedButton<VehiclePropulsion>(
+                showSelectedIcon: false,
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 segments: const [
                   ButtonSegment(
                     value: VehiclePropulsion.combustao,
-                    label: Text('Combustão'),
-                    icon: Icon(Icons.local_gas_station, size: 18),
+                    label: Text('Combustão', maxLines: 1, softWrap: false),
+                    icon: Icon(Icons.local_gas_station, size: 16),
                   ),
                   ButtonSegment(
                     value: VehiclePropulsion.hibrido,
-                    label: Text('Híbrido'),
-                    icon: Icon(Icons.electric_car, size: 18),
+                    label: Text('Híbrido', maxLines: 1, softWrap: false),
+                    icon: Icon(Icons.electric_car, size: 16),
                   ),
                   ButtonSegment(
                     value: VehiclePropulsion.eletrico,
-                    label: Text('Elétrico ⚡'),
-                    icon: Icon(Icons.bolt, size: 18),
+                    label: Text('Elétrico', maxLines: 1, softWrap: false),
+                    icon: Icon(Icons.ev_station, size: 16),
                   ),
                 ],
                 selected: {_propulsion},
                 onSelectionChanged: (set) {
                   setState(() {
+                    _manualPropulsionOverride = true;
                     _propulsion = set.first;
                     if (_propulsion != VehiclePropulsion.combustao) {
                       _transmission = 'Automático';
@@ -1484,12 +1764,12 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.bolt, color: AppColors.success, size: 18),
+                      const Icon(Icons.ev_station, color: AppColors.success, size: 18),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           isElectric
-                              ? 'Modo 100% Elétrico ativo: recargas em kWh, eficiência em km/kWh, catálogo de manutenção EV (sem óleo de motor/velas/correia) e isenção de rodízio.'
+                              ? 'Modo 100% Elétrico ativo: recargas em kWh, eficiência em km/kWh, catálogo de manutenção EV e isenção de rodízio.'
                               : 'Modo Híbrido ativo: suporta Combustível (L) e Recarga Elétrica (kWh), alertas do sistema híbrido e isenção de rodízio.',
                           style: const TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600),
                         ),
@@ -1500,22 +1780,32 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               ],
               const SizedBox(height: 16),
 
-              // CAMPO DE MARCA COM BOTÃO DE LISTA / BUSCA
+              // CAMPO DE MARCA + BLOQUINHO DE 5 OPÇÕES ROLÁVEL E FILTRÁVEL
               TextFormField(
                 controller: _brand,
                 decoration: InputDecoration(
-                  labelText: 'Marca',
+                  labelText: 'Marca (digite para filtrar ou escolha abaixo)',
                   prefixIcon: const Icon(Icons.business),
                   hintText: _type == VehicleType.caminhao
-                      ? 'Ex: Scania, Volvo, VW e-Delivery, BYD'
+                      ? 'Ex: Scania, Volvo, Volkswagen, BYD'
                       : (_type == VehicleType.moto
                           ? 'Ex: Honda, Yamaha, Voltz, Watts'
                           : 'Ex: Volkswagen, BYD, GWM, Toyota'),
-                  suffixIcon: TextButton.icon(
-                    onPressed: _openBrandPickerModal,
-                    icon: const Icon(Icons.search, size: 18),
-                    label: const Text('Lista'),
-                  ),
+                  suffixIcon: _brand.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          tooltip: 'Limpar marca',
+                          onPressed: () {
+                            setState(() {
+                              _brand.clear();
+                              _model.clear();
+                              _fipeModels = [];
+                              _fipeYears = [];
+                              _autoFipeResult = null;
+                            });
+                          },
+                        )
+                      : null,
                 ),
                 validator: (v) => Validators.required(v, 'Marca'),
                 onChanged: (val) {
@@ -1523,43 +1813,22 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   setState(() => _autoDetectPropulsion(val, _model.text));
                 },
               ),
-              const SizedBox(height: 6),
-              // Atalhos rápidos das marcas mais comuns
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ActionChip(
-                        avatar: const Icon(Icons.list, size: 16, color: AppColors.goldenPollen),
-                        label: const Text('Ver todas as marcas', style: TextStyle(fontSize: 12)),
-                        onPressed: _openBrandPickerModal,
-                      ),
-                    ),
-                    ...popularBrands.map((b) {
-                      final isSelected = _brand.text.trim().toLowerCase() == b.toLowerCase();
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ChoiceChip(
-                          label: Text(b, style: const TextStyle(fontSize: 12)),
-                          selected: isSelected,
-                          onSelected: (_) => _selectBrand(b),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+              _CaixaOpcoesRolavel(
+                opcoes: brandsList,
+                valorSelecionado: _brand.text,
+                filtroTexto: _brand.text,
+                rotuloCabecalho: 'Role para escolher a Marca (5 por vez)',
+                aoSelecionar: _selectBrand,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
-              // CAMPO DE MODELO COM BUSCA POR MARCA
+              // CAMPO DE MODELO + BLOQUINHO DE 5 OPÇÕES ROLÁVEL E FILTRÁVEL
               TextFormField(
                 controller: _model,
                 decoration: InputDecoration(
                   labelText: _brand.text.trim().isNotEmpty
-                      ? 'Modelo (${_brand.text.trim()})'
-                      : 'Modelo',
+                      ? 'Modelo — ${_brand.text.trim()} (digite ou role abaixo)'
+                      : 'Modelo (digite para filtrar ou role abaixo)',
                   prefixIcon: Icon(
                     _type == VehicleType.caminhao
                         ? Icons.local_shipping
@@ -1570,67 +1839,117 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                       : (_type == VehicleType.moto
                           ? 'Ex: CG 160 Titan, EVS, Fazer 250'
                           : 'Ex: Gol, Dolphin, Corolla Hybrid'),
-                  suffixIcon: TextButton.icon(
-                    onPressed: _openModelPickerModal,
-                    icon: _loadingFipeModels
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
+                  suffixIcon: _loadingFipeModels
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.search, size: 18),
-                    label: const Text('Buscar'),
-                  ),
+                          ),
+                        )
+                      : (_model.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              tooltip: 'Limpar modelo',
+                              onPressed: () {
+                                setState(() {
+                                  _model.clear();
+                                  _fipeYears = [];
+                                  _autoFipeResult = null;
+                                });
+                              },
+                            )
+                          : null),
                 ),
                 validator: (v) => Validators.required(v, 'Modelo'),
                 onChanged: (val) {
                   setState(() => _autoDetectPropulsion(_brand.text, val));
+                  _tryAutoLookupFipe(val);
                 },
               ),
-              if (modelsForBrand.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
+              if (modelsForBrand.isNotEmpty)
+                _CaixaOpcoesRolavel(
+                  opcoes: modelsForBrand,
+                  valorSelecionado: _model.text,
+                  filtroTexto: _model.text,
+                  rotuloCabecalho: _brand.text.trim().isNotEmpty
+                      ? 'Modelos de ${_brand.text.trim()} (role ou digite)'
+                      : 'Modelos disponíveis (role ou digite)',
+                  aoSelecionar: _selectModel,
+                ),
+
+              // CARD AUTOMÁTICO DA TABELA FIPE ASSIM QUE ESCOLHE O MODELO
+              if (_loadingFipePrice) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: const [
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Buscando valor automático na Tabela FIPE...',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ] else if (_autoFipeResult != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldenPollen.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.45)),
+                  ),
                   child: Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ActionChip(
-                          avatar: const Icon(Icons.manage_search, size: 16, color: AppColors.goldenPollen),
-                          label: Text(
-                            _brand.text.trim().isNotEmpty
-                                ? 'Buscar modelos de ${_brand.text.trim()} (${modelsForBrand.length})'
-                                : 'Buscar na lista de modelos',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          onPressed: _openModelPickerModal,
+                      const Icon(Icons.request_quote, color: AppColors.goldenPollen, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Tabela FIPE vinculada automaticamente: ${_autoFipeResult!.value}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              'Código ${_autoFipeResult!.code} • Ref: ${_autoFipeResult!.reference}',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                          ],
                         ),
                       ),
-                      ...modelsForBrand.take(10).map((m) {
-                        final isSelected = _model.text.trim().toLowerCase() == m.toLowerCase();
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ChoiceChip(
-                            label: Text(m, style: const TextStyle(fontSize: 12)),
-                            selected: isSelected,
-                            onSelected: (_) => _selectModel(m),
-                          ),
-                        );
-                      }),
+                      const Icon(Icons.check_circle, color: AppColors.success, size: 18),
                     ],
                   ),
                 ),
               ],
+
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
-                    child: AppTextField(
+                    child: TextFormField(
                       controller: _year,
-                      label: 'Ano',
-                      icon: Icons.calendar_today,
+                      decoration: const InputDecoration(
+                        labelText: 'Ano',
+                        prefixIcon: Icon(Icons.calendar_today),
+                      ),
                       keyboardType: TextInputType.number,
                       validator: Validators.year,
+                      onChanged: (val) {
+                        if (val.trim().length == 4) {
+                          _onYearSelectedOrChanged(val);
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1645,6 +1964,21 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   ),
                 ],
               ),
+              if (_fipeYears.isNotEmpty) ...[
+                _CaixaOpcoesRolavel(
+                  opcoes: _fipeYears.map((y) => y.name).toList(),
+                  valorSelecionado: _year.text,
+                  filtroTexto: '',
+                  rotuloCabecalho: 'Anos / Versões na Tabela FIPE (toque para atualizar o preço)',
+                  aoSelecionar: (yearLabel) {
+                    final matchDigits = RegExp(r'\b(19\d\d|20\d\d)\b').firstMatch(yearLabel);
+                    setState(() {
+                      _year.text = matchDigits != null ? matchDigits.group(0)! : yearLabel.split(' ').first;
+                    });
+                    _onYearSelectedOrChanged(yearLabel);
+                  },
+                ),
+              ],
               const SizedBox(height: 12),
               AppTextField(
                 controller: _tankCapacity,
@@ -1679,7 +2013,7 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                     return const Padding(
                       padding: EdgeInsets.only(top: 6, left: 4),
                       child: Text(
-                        '🏍️ Motocicletas são isentas do rodízio municipal.',
+                        'Motocicletas são isentas do rodízio municipal.',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     );
@@ -1786,173 +2120,6 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
   }
 }
 
-/// Modal reutilizável de busca em lista (para Marcas e Modelos por Marca).
-class _SearchableListModal extends StatefulWidget {
-  final String title;
-  final String? subtitle;
-  final String searchHint;
-  final List<String> items;
-  final String currentValue;
-  final String emptyMessage;
-
-  const _SearchableListModal({
-    required this.title,
-    this.subtitle,
-    required this.searchHint,
-    required this.items,
-    required this.currentValue,
-    required this.emptyMessage,
-  });
-
-  @override
-  State<_SearchableListModal> createState() => _SearchableListModalState();
-}
-
-class _SearchableListModalState extends State<_SearchableListModal> {
-  late final TextEditingController _searchCtrl;
-  String _query = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _searchCtrl = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final q = _query.trim().toLowerCase();
-    final filtered = q.isEmpty
-        ? widget.items
-        : widget.items.where((item) => item.toLowerCase().contains(q)).toList();
-
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
-      padding: EdgeInsets.fromLTRB(
-        20,
-        16,
-        20,
-        16 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    if (widget.subtitle != null)
-                      Text(
-                        widget.subtitle!,
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                tooltip: 'Fechar',
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _searchCtrl,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: widget.searchHint,
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _query.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        setState(() => _query = '');
-                      },
-                    )
-                  : null,
-            ),
-            onChanged: (val) => setState(() => _query = val),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.emptyMessage,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.grey),
-                        ),
-                        if (_query.trim().isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          FilledButton.icon(
-                            icon: const Icon(Icons.check),
-                            label: Text('Usar "${_query.trim()}"'),
-                            onPressed: () => Navigator.pop(context, _query.trim()),
-                          ),
-                        ],
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final item = filtered[index];
-                      final isSelected = item.toLowerCase() == widget.currentValue.toLowerCase();
-                      return ListTile(
-                        title: Text(
-                          item,
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? AppColors.goldenPollen : null,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? const Icon(Icons.check_circle, color: AppColors.goldenPollen)
-                            : const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
-                        onTap: () => Navigator.pop(context, item),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ==========================================
 // FORMULÁRIO DE MANUTENÇÃO
 // ==========================================
@@ -1980,6 +2147,7 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
 
   late String _selectedVehicleId;
   late String _category;
+  late final TextEditingController _categoryFilterCtrl;
   late DateTime _date;
   late final TextEditingController _km;
   late final TextEditingController _cost;
@@ -2008,6 +2176,7 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
     final categories = MaintenanceCatalog.categoriesFor(vehicle);
 
     _category = (e != null && categories.contains(e.category)) ? e.category : categories.first;
+    _categoryFilterCtrl = TextEditingController(text: _category);
     _date = e?.date ?? DateTime.now();
     _km = TextEditingController(text: '${e?.km ?? vehicle.currentKm}');
     _cost = TextEditingController(text: e != null ? '${e.cost}' : '');
@@ -2020,6 +2189,7 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
 
   @override
   void dispose() {
+    _categoryFilterCtrl.dispose();
     _km.dispose();
     _cost.dispose();
     _notes.dispose();
@@ -2037,12 +2207,12 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
 
     setState(() {
       _selectedVehicleId = val;
-      // Atualiza quilometragem e dados puxados para o novo veículo selecionado
       if (widget.existing == null) {
         _km.text = '${newVehicle.currentKm}';
       }
       if (!newCategories.contains(_category)) {
         _category = newCategories.first;
+        _categoryFilterCtrl.text = _category;
       }
       if (_scheduleNext) {
         final item = MaintenanceCatalog.find(_category);
@@ -2056,10 +2226,11 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
   }
 
   void _onCategoryChanged(String? val) {
-    if (val == null) return;
+    if (val == null || val.trim().isEmpty) return;
     setState(() {
-      _category = val;
-      final item = MaintenanceCatalog.find(val);
+      _category = val.trim();
+      _categoryFilterCtrl.text = _category;
+      final item = MaintenanceCatalog.find(_category);
       if (item != null) {
         final currentKm = int.tryParse(_km.text) ?? 0;
         if (item.intervalKm != null) {
@@ -2074,6 +2245,15 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
     });
   }
 
+  String _categorySubtitle(String catName) {
+    final item = MaintenanceCatalog.find(catName);
+    if (item == null) return '';
+    final parts = <String>[];
+    if (item.intervalKm != null) parts.add('A cada ${formatKm(item.intervalKm!)}');
+    if (item.intervalMonths != null) parts.add('A cada ${item.intervalMonths} meses');
+    return parts.join(' • ');
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -2082,11 +2262,14 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
       final kmVal = int.tryParse(_km.text.trim()) ?? 0;
       final costVal = parseNumber(_cost.text.trim()) ?? 0;
       final nextKmVal = _scheduleNext ? int.tryParse(_nextKm.text.trim()) : null;
+      final chosenCategory = _categoryFilterCtrl.text.trim().isNotEmpty
+          ? _categoryFilterCtrl.text.trim()
+          : _category;
 
       final maintenance = Maintenance(
         id: widget.existing?.id ?? '',
         vehicleId: _selectedVehicleId,
-        category: _category,
+        category: chosenCategory,
         date: _date,
         km: kmVal,
         cost: costVal,
@@ -2171,14 +2354,31 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
                 onChanged: _onVehicleChanged,
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                key: ValueKey('maint_cat_${_selectedVehicleId}_$effectiveCategory'),
-                initialValue: effectiveCategory,
-                decoration: const InputDecoration(labelText: 'Serviço / Categoria', prefixIcon: Icon(Icons.build)),
-                items: categories
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)))
-                    .toList(),
-                onChanged: _onCategoryChanged,
+              TextFormField(
+                controller: _categoryFilterCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Serviço / Categoria (digite ou role abaixo)',
+                  hintText: 'Ex: Troca de óleo, Pneus, Freio...',
+                  prefixIcon: Icon(MaintenanceCatalog.find(effectiveCategory)?.icon ?? Icons.build),
+                  suffixIcon: _categoryFilterCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          tooltip: 'Limpar filtro para ver todos',
+                          onPressed: () => setState(() => _categoryFilterCtrl.clear()),
+                        )
+                      : null,
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Selecione ou digite um serviço' : null,
+                onChanged: (val) => setState(() {}),
+              ),
+              _CaixaOpcoesRolavel(
+                opcoes: categories,
+                valorSelecionado: effectiveCategory,
+                filtroTexto: _categoryFilterCtrl.text,
+                rotuloCabecalho: 'Serviços compatíveis (role 5 por vez ou digite acima)',
+                iconeOpcao: (cat) => MaintenanceCatalog.find(cat)?.icon ?? Icons.build,
+                subtituloOpcao: _categorySubtitle,
+                aoSelecionar: _onCategoryChanged,
               ),
               const SizedBox(height: 12),
               Container(
@@ -2336,6 +2536,7 @@ class _FuelFormSheet extends StatefulWidget {
 
 class _FuelFormSheetState extends State<_FuelFormSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _nearbyService = ServicoPostosProximos();
 
   late String _selectedVehicleId;
   late String _selectedFuelType;
@@ -2349,6 +2550,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   bool _isFullTank = true;
   bool _isCalculating = false;
   bool _loading = false;
+
+  List<PostoProximo> _nearbyStations = [];
+  bool _loadingNearbyStations = false;
 
   static const List<String> _stationSuggestions = [
     'Posto Shell',
@@ -2416,6 +2620,25 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     _isFullTank = e?.isFullTank ?? true;
 
     _km.addListener(() => setState(() {}));
+    _gasStation.addListener(() => setState(() {}));
+    _fetchNearbyStations();
+  }
+
+  Future<void> _fetchNearbyStations() async {
+    final isEv = _selectedFuelType == FuelTypes.eletricidade;
+    setState(() => _loadingNearbyStations = true);
+    try {
+      final list = await _nearbyService.buscarPostosProximos(eletrico: isEv);
+      if (mounted) {
+        setState(() => _nearbyStations = list);
+      }
+    } catch (_) {
+      // Silencioso: mantém sugestões locais e histórico
+    } finally {
+      if (mounted) {
+        setState(() => _loadingNearbyStations = false);
+      }
+    }
   }
 
   @override
@@ -2434,6 +2657,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
       (x) => x.id == val,
       orElse: () => widget.vehicles.first,
     );
+    final oldWasEv = _selectedFuelType == FuelTypes.eletricidade;
     setState(() {
       _selectedVehicleId = val;
       if (widget.existing == null) {
@@ -2447,6 +2671,10 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
         }
       }
     });
+    final newIsEv = _selectedFuelType == FuelTypes.eletricidade;
+    if (oldWasEv != newIsEv) {
+      _fetchNearbyStations();
+    }
   }
 
   void _onPricePerUnitChanged(String val) {
@@ -2582,7 +2810,49 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     final volumeLabel = isElectricFuel ? 'Carga (kWh)' : (isGnv ? 'Volume (m³)' : 'Volume (L)');
     final volumeName = isElectricFuel ? 'Energia em kWh' : (isGnv ? 'Volume em m³' : 'Litros');
     final consumptionUnitLabel = isElectricFuel ? 'km/kWh' : (isGnv ? 'km/m³' : 'km/l');
-    final stationSuggestions = isElectricFuel ? _evStationSuggestions : _stationSuggestions;
+
+    // Monta lista de postos: 1) Postos próximos da localização, 2) Postos já visitados pelo usuário, 3) Sugestões padrão
+    final visitedStations = <String>[];
+    final visitedPriceMap = <String, String>{};
+    for (final f in widget.fuels) {
+      final st = f.gasStation.trim();
+      if (st.isEmpty) continue;
+      final fIsEv = f.fuelType == FuelTypes.eletricidade;
+      if (fIsEv != isElectricFuel) continue;
+      if (!visitedStations.any((x) => x.toLowerCase() == st.toLowerCase())) {
+        visitedStations.add(st);
+        if (f.liters > 0) {
+          final ppu = f.totalPrice / f.liters;
+          visitedPriceMap[st.toLowerCase()] =
+              'Já visitado • Último: ${formatMoney(ppu)}/$unitLabel (${f.fuelType})';
+        } else {
+          visitedPriceMap[st.toLowerCase()] = 'Já visitado por você';
+        }
+      }
+    }
+
+    final nearbyMap = <String, PostoProximo>{};
+    final combinedStationNames = <String>[];
+
+    for (final p in _nearbyStations) {
+      final n = p.nome.trim();
+      if (n.isEmpty) continue;
+      if (!combinedStationNames.any((x) => x.toLowerCase() == n.toLowerCase())) {
+        combinedStationNames.add(n);
+        nearbyMap[n.toLowerCase()] = p;
+      }
+    }
+    for (final vSt in visitedStations) {
+      if (!combinedStationNames.any((x) => x.toLowerCase() == vSt.toLowerCase())) {
+        combinedStationNames.add(vSt);
+      }
+    }
+    final fallbackSuggestions = isElectricFuel ? _evStationSuggestions : _stationSuggestions;
+    for (final s in fallbackSuggestions) {
+      if (!combinedStationNames.any((x) => x.toLowerCase() == s.toLowerCase())) {
+        combinedStationNames.add(s);
+      }
+    }
 
     final currentVehicleKm = vehicle.currentKm;
     final enteredKm = int.tryParse(_km.text.trim()) ?? 0;
@@ -2616,8 +2886,8 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   Expanded(
                     child: Text(
                       widget.existing == null
-                          ? (isElectricFuel ? 'Nova Recarga Elétrica ⚡' : 'Novo Abastecimento')
-                          : (isElectricFuel ? 'Editar Recarga Elétrica ⚡' : 'Editar Abastecimento'),
+                          ? (isElectricFuel ? 'Nova Recarga Elétrica' : 'Novo Abastecimento')
+                          : (isElectricFuel ? 'Editar Recarga Elétrica' : 'Editar Abastecimento'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -2644,7 +2914,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                     .map((v) => DropdownMenuItem(
                           value: v.id,
                           child: Text(
-                            '${v.name}${v.isElectric ? " (⚡ Elétrico)" : (v.isHybrid ? " (⚡ Híbrido)" : "")}',
+                            '${v.name}${v.isElectric ? " (Elétrico)" : (v.isHybrid ? " (Híbrido)" : "")}',
                           ),
                         ))
                     .toList(),
@@ -2663,13 +2933,18 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 items: allowedFuels
                     .map((t) => DropdownMenuItem(
                           value: t,
-                          child: Text(t == FuelTypes.eletricidade ? '⚡ Eletricidade (kWh)' : t),
+                          child: Text(t == FuelTypes.eletricidade ? 'Eletricidade (kWh)' : t),
                         ))
                     .toList(),
                 onChanged: allowedFuels.length <= 1
                     ? null
                     : (val) {
-                        if (val != null) setState(() => _selectedFuelType = val);
+                        if (val != null) {
+                          final oldEv = _selectedFuelType == FuelTypes.eletricidade;
+                          setState(() => _selectedFuelType = val);
+                          final newEv = _selectedFuelType == FuelTypes.eletricidade;
+                          if (oldEv != newEv) _fetchNearbyStations();
+                        }
                       },
               ),
               const SizedBox(height: 14),
@@ -2869,34 +3144,75 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
               ),
               const SizedBox(height: 14),
 
-              // CAMPO DE POSTO / ELETROPOSTO COM AUTOCOMPLETE
-              Autocomplete<String>(
-                key: ValueKey('fuel_station_${_selectedVehicleId}_$isElectricFuel'),
-                initialValue: TextEditingValue(text: _gasStation.text),
-                optionsBuilder: (textEditingValue) {
-                  if (textEditingValue.text.isEmpty) {
-                    return stationSuggestions;
-                  }
-                  return stationSuggestions.where((s) =>
-                      s.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+              // CAMPO DE POSTO / ELETROPOSTO COM BLOQUINHO ROLÁVEL DE 5 OPÇÕES (POSTOS PRÓXIMOS + VISITADOS)
+              TextFormField(
+                controller: _gasStation,
+                decoration: InputDecoration(
+                  labelText: isElectricFuel
+                      ? 'Eletroposto / Local de Recarga (opcional)'
+                      : 'Posto de Combustível (opcional)',
+                  hintText: isElectricFuel
+                      ? 'Digite para filtrar ou escolha um eletroposto abaixo'
+                      : 'Digite para filtrar ou escolha um posto próximo abaixo',
+                  prefixIcon: Icon(isElectricFuel ? Icons.ev_station : Icons.storefront),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_gasStation.text.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          tooltip: 'Limpar campo',
+                          onPressed: () => setState(() => _gasStation.clear()),
+                        ),
+                      IconButton(
+                        icon: _loadingNearbyStations
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.my_location, size: 18),
+                        tooltip: 'Buscar postos perto de mim',
+                        onPressed: _loadingNearbyStations ? null : _fetchNearbyStations,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              _CaixaOpcoesRolavel(
+                opcoes: combinedStationNames,
+                valorSelecionado: _gasStation.text,
+                filtroTexto: _gasStation.text,
+                rotuloCabecalho: _loadingNearbyStations
+                    ? 'Localizando postos próximos de você...'
+                    : (_nearbyStations.isNotEmpty
+                        ? 'Postos perto de você e visitados (role 5 por vez)'
+                        : 'Postos visitados e sugeridos (role 5 por vez)'),
+                iconeOpcao: (st) {
+                  final key = st.toLowerCase();
+                  if (nearbyMap.containsKey(key)) return Icons.near_me;
+                  if (visitedPriceMap.containsKey(key)) return Icons.history;
+                  return isElectricFuel ? Icons.ev_station : Icons.local_gas_station;
                 },
-                onSelected: (selection) => _gasStation.text = selection,
-                fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
-                  controller.addListener(() => _gasStation.text = controller.text);
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    onEditingComplete: onEditingComplete,
-                    decoration: InputDecoration(
-                      labelText: isElectricFuel
-                          ? 'Eletroposto / Local de Recarga (opcional)'
-                          : 'Posto de Combustível (opcional)',
-                      hintText: isElectricFuel
-                          ? 'Ex: Wallbox Residencial, Tupinambá, Shell Recharge, Zletric'
-                          : 'Ex: Shell, Ipiranga, Petrobras BR',
-                      prefixIcon: Icon(isElectricFuel ? Icons.ev_station : Icons.storefront),
-                    ),
-                  );
+                subtituloOpcao: (st) {
+                  final key = st.toLowerCase();
+                  final near = nearbyMap[key];
+                  final visitedInfo = visitedPriceMap[key];
+                  if (near != null && visitedInfo != null) {
+                    return 'A ${near.rotuloDistancia} de você • $visitedInfo';
+                  }
+                  if (near != null) {
+                    return 'Perto de você (${near.rotuloDistancia})${near.endereco.isNotEmpty ? " • ${near.endereco}" : ""}';
+                  }
+                  if (visitedInfo != null) {
+                    return visitedInfo;
+                  }
+                  return '';
+                },
+                aoSelecionar: (selection) {
+                  setState(() {
+                    _gasStation.text = selection;
+                  });
                 },
               ),
               const SizedBox(height: 12),
@@ -2987,7 +3303,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
 }
 
 // ==========================================
-// CONSULTA FIPE
+// CONSULTA FIPE (COM AUTO-SELEÇÃO DO VEÍCULO E BLOQUINHO DE 5 OPÇÕES)
 // ==========================================
 class _FipeLookupSheet extends StatefulWidget {
   final Vehicle vehicle;
@@ -3011,6 +3327,10 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
   FipeItem? _selectedYear;
   FipeResult? _result;
 
+  late final TextEditingController _brandFilterCtrl;
+  late final TextEditingController _modelFilterCtrl;
+  late final TextEditingController _yearFilterCtrl;
+
   bool _loadingBrands = false;
   bool _loadingModels = false;
   bool _loadingYears = false;
@@ -3021,17 +3341,62 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
   @override
   void initState() {
     super.initState();
-    _loadBrands();
+    _brandFilterCtrl = TextEditingController(text: widget.vehicle.brand);
+    _modelFilterCtrl = TextEditingController(text: widget.vehicle.model);
+    _yearFilterCtrl = TextEditingController(text: widget.vehicle.year);
+    _loadBrands(autoMatch: true);
   }
 
-  Future<void> _loadBrands() async {
+  @override
+  void dispose() {
+    _brandFilterCtrl.dispose();
+    _modelFilterCtrl.dispose();
+    _yearFilterCtrl.dispose();
+    super.dispose();
+  }
+
+  FipeItem? _findBestMatch(List<FipeItem> items, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty || items.isEmpty) return null;
+    for (final item in items) {
+      if (item.name.toLowerCase() == q) return item;
+    }
+    for (final item in items) {
+      if (item.name.toLowerCase().startsWith(q) || q.startsWith(item.name.toLowerCase())) {
+        return item;
+      }
+    }
+    for (final item in items) {
+      if (item.name.toLowerCase().contains(q) || q.contains(item.name.toLowerCase())) {
+        return item;
+      }
+    }
+    final firstWord = q.split(RegExp(r'\s+')).first;
+    if (firstWord.length >= 2) {
+      for (final item in items) {
+        if (item.name.toLowerCase().contains(firstWord)) return item;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _loadBrands({bool autoMatch = false}) async {
     setState(() {
       _loadingBrands = true;
       _error = null;
     });
     try {
       final list = await _fipe.brands(widget.vehicle.type);
-      if (mounted) setState(() => _brands = list);
+      if (!mounted) return;
+      setState(() => _brands = list);
+
+      if (autoMatch) {
+        final matchedBrand = _findBestMatch(list, widget.vehicle.brand);
+        if (matchedBrand != null) {
+          _brandFilterCtrl.text = matchedBrand.name;
+          await _loadModels(matchedBrand, autoMatch: true);
+        }
+      }
     } catch (e) {
       if (mounted) setState(() => _error = 'Erro ao carregar marcas FIPE: $e');
     } finally {
@@ -3039,9 +3404,10 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
     }
   }
 
-  Future<void> _loadModels(FipeItem brand) async {
+  Future<void> _loadModels(FipeItem brand, {bool autoMatch = false}) async {
     setState(() {
       _selectedBrand = brand;
+      _brandFilterCtrl.text = brand.name;
       _selectedModel = null;
       _selectedYear = null;
       _models = [];
@@ -3052,7 +3418,16 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
     });
     try {
       final list = await _fipe.models(widget.vehicle.type, brand.code);
-      if (mounted) setState(() => _models = list);
+      if (!mounted) return;
+      setState(() => _models = list);
+
+      if (autoMatch) {
+        final matchedModel = _findBestMatch(list, widget.vehicle.model);
+        if (matchedModel != null) {
+          _modelFilterCtrl.text = matchedModel.name;
+          await _loadYears(matchedModel, autoMatch: true);
+        }
+      }
     } catch (e) {
       if (mounted) setState(() => _error = 'Erro ao carregar modelos: $e');
     } finally {
@@ -3060,10 +3435,11 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
     }
   }
 
-  Future<void> _loadYears(FipeItem model) async {
+  Future<void> _loadYears(FipeItem model, {bool autoMatch = false}) async {
     if (_selectedBrand == null) return;
     setState(() {
       _selectedModel = model;
+      _modelFilterCtrl.text = model.name;
       _selectedYear = null;
       _years = [];
       _result = null;
@@ -3072,7 +3448,14 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
     });
     try {
       final list = await _fipe.years(widget.vehicle.type, _selectedBrand!.code, model.code);
-      if (mounted) setState(() => _years = list);
+      if (!mounted) return;
+      setState(() => _years = list);
+
+      if (list.isNotEmpty) {
+        final matchedYear = _findBestMatch(list, widget.vehicle.year) ?? list.first;
+        _yearFilterCtrl.text = matchedYear.name;
+        await _loadPrice(matchedYear);
+      }
     } catch (e) {
       if (mounted) setState(() => _error = 'Erro ao carregar anos: $e');
     } finally {
@@ -3084,11 +3467,17 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
     if (_selectedBrand == null || _selectedModel == null) return;
     setState(() {
       _selectedYear = year;
+      _yearFilterCtrl.text = year.name;
       _loadingPrice = true;
       _error = null;
     });
     try {
-      final res = await _fipe.price(widget.vehicle.type, _selectedBrand!.code, _selectedModel!.code, year.code);
+      final res = await _fipe.price(
+        widget.vehicle.type,
+        _selectedBrand!.code,
+        _selectedModel!.code,
+        year.code,
+      );
       if (mounted) setState(() => _result = res);
     } catch (e) {
       if (mounted) setState(() => _error = 'Erro ao obter preço FIPE: $e');
@@ -3104,15 +3493,27 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
       final updated = Vehicle(
         id: widget.vehicle.id,
         type: widget.vehicle.type,
+        propulsion: widget.vehicle.propulsion,
         brand: widget.vehicle.brand,
         model: widget.vehicle.model,
         year: widget.vehicle.year,
         plate: widget.vehicle.plate,
         currentKm: widget.vehicle.currentKm,
+        tankCapacity: widget.vehicle.tankCapacity,
         transmission: widget.vehicle.transmission,
         fipeCode: _result!.code,
         fipeValue: _result!.value,
         fipeReference: _result!.reference,
+        ipvaDueMonth: widget.vehicle.ipvaDueMonth,
+        ipvaPaid: widget.vehicle.ipvaPaid,
+        ipvaAmount: widget.vehicle.ipvaAmount,
+        licensingPaid: widget.vehicle.licensingPaid,
+        insuranceCompany: widget.vehicle.insuranceCompany,
+        insurancePolicy: widget.vehicle.insurancePolicy,
+        insurancePhone: widget.vehicle.insurancePhone,
+        insuranceExpiryDate: widget.vehicle.insuranceExpiryDate,
+        lastTireRotationKm: widget.vehicle.lastTireRotationKm,
+        tireRotationIntervalKm: widget.vehicle.tireRotationIntervalKm,
       );
       await widget.repo.update(updated);
       if (mounted) {
@@ -3128,8 +3529,9 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -3152,7 +3554,10 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Consulta Tabela FIPE', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                      Text(
+                        'Consulta Tabela FIPE',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
                       Text(widget.vehicle.name, style: const TextStyle(color: Colors.grey)),
                     ],
                   ),
@@ -3164,7 +3569,7 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (_error != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -3175,39 +3580,13 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
                 ),
                 child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
               ),
-            if (_loadingBrands)
-              const Center(child: CircularProgressIndicator())
-            else
-              DropdownButtonFormField<FipeItem>(
-                initialValue: _selectedBrand,
-                decoration: const InputDecoration(labelText: 'Marca FIPE'),
-                items: _brands.map((b) => DropdownMenuItem(value: b, child: Text(b.name))).toList(),
-                onChanged: (b) => b != null ? _loadModels(b) : null,
+
+            // RESULTADO FIPE EM DESTAQUE NO TOPO ASSIM QUE IDENTIFICADO AUTOMATICAMENTE
+            if (_loadingPrice)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(child: CircularProgressIndicator()),
               ),
-            const SizedBox(height: 12),
-            if (_loadingModels)
-              const Center(child: CircularProgressIndicator())
-            else if (_models.isNotEmpty)
-              DropdownButtonFormField<FipeItem>(
-                key: ValueKey('fipe_model_${_selectedBrand?.code}'),
-                initialValue: _selectedModel,
-                decoration: const InputDecoration(labelText: 'Modelo FIPE'),
-                items: _models.map((m) => DropdownMenuItem(value: m, child: Text(m.name, overflow: TextOverflow.ellipsis))).toList(),
-                onChanged: (m) => m != null ? _loadYears(m) : null,
-              ),
-            const SizedBox(height: 12),
-            if (_loadingYears)
-              const Center(child: CircularProgressIndicator())
-            else if (_years.isNotEmpty)
-              DropdownButtonFormField<FipeItem>(
-                key: ValueKey('fipe_year_${_selectedModel?.code}'),
-                initialValue: _selectedYear,
-                decoration: const InputDecoration(labelText: 'Ano / Combustível'),
-                items: _years.map((y) => DropdownMenuItem(value: y, child: Text(y.name))).toList(),
-                onChanged: (y) => y != null ? _loadPrice(y) : null,
-              ),
-            const SizedBox(height: 16),
-            if (_loadingPrice) const Center(child: CircularProgressIndicator()),
             if (_result != null) ...[
               Card(
                 color: AppColors.goldenPollen.withValues(alpha: 0.15),
@@ -3215,7 +3594,7 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      const Text('Valor FIPE Oficial:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text('Valor FIPE Oficial Identificado:', style: TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text(
                         _result!.value,
@@ -3225,16 +3604,118 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
                             ),
                       ),
                       const SizedBox(height: 4),
-                      Text('Código: ${_result!.code} • Mês: ${_result!.reference}', style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        '${_selectedBrand?.name ?? widget.vehicle.brand} • ${_selectedModel?.name ?? widget.vehicle.model} (${_selectedYear?.name ?? widget.vehicle.year})',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Código: ${_result!.code} • Ref: ${_result!.reference}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               LoadingButton(
                 label: 'Salvar Valor FIPE no Veículo',
                 loading: _saving,
                 onPressed: _saveFipe,
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // MARCA FIPE COM BLOQUINHO DE 5 OPÇÕES
+            if (_loadingBrands)
+              const Center(child: CircularProgressIndicator())
+            else if (_brands.isNotEmpty) ...[
+              TextFormField(
+                controller: _brandFilterCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Marca FIPE (digite ou role abaixo)',
+                  prefixIcon: const Icon(Icons.business),
+                  suffixIcon: _brandFilterCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => setState(() => _brandFilterCtrl.clear()),
+                        )
+                      : null,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              _CaixaOpcoesRolavel(
+                opcoes: _brands.map((b) => b.name).toList(),
+                valorSelecionado: _selectedBrand?.name ?? '',
+                filtroTexto: _brandFilterCtrl.text,
+                rotuloCabecalho: 'Marcas FIPE (role 5 por vez)',
+                aoSelecionar: (nome) {
+                  final b = _brands.firstWhere((x) => x.name == nome);
+                  _loadModels(b);
+                },
+              ),
+            ],
+            const SizedBox(height: 12),
+
+            // MODELO FIPE COM BLOQUINHO DE 5 OPÇÕES
+            if (_loadingModels)
+              const Center(child: CircularProgressIndicator())
+            else if (_models.isNotEmpty) ...[
+              TextFormField(
+                controller: _modelFilterCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Modelo FIPE (digite ou role abaixo)',
+                  prefixIcon: const Icon(Icons.directions_car),
+                  suffixIcon: _modelFilterCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => setState(() => _modelFilterCtrl.clear()),
+                        )
+                      : null,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              _CaixaOpcoesRolavel(
+                opcoes: _models.map((m) => m.name).toList(),
+                valorSelecionado: _selectedModel?.name ?? '',
+                filtroTexto: _modelFilterCtrl.text,
+                rotuloCabecalho: 'Modelos FIPE (role 5 por vez)',
+                aoSelecionar: (nome) {
+                  final m = _models.firstWhere((x) => x.name == nome);
+                  _loadYears(m);
+                },
+              ),
+            ],
+            const SizedBox(height: 12),
+
+            // ANO / VERSÃO FIPE COM BLOQUINHO DE 5 OPÇÕES
+            if (_loadingYears)
+              const Center(child: CircularProgressIndicator())
+            else if (_years.isNotEmpty) ...[
+              TextFormField(
+                controller: _yearFilterCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Ano / Versão FIPE (digite ou role abaixo)',
+                  prefixIcon: const Icon(Icons.calendar_today),
+                  suffixIcon: _yearFilterCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => setState(() => _yearFilterCtrl.clear()),
+                        )
+                      : null,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              _CaixaOpcoesRolavel(
+                opcoes: _years.map((y) => y.name).toList(),
+                valorSelecionado: _selectedYear?.name ?? '',
+                filtroTexto: _yearFilterCtrl.text,
+                rotuloCabecalho: 'Anos / Versões FIPE (role 5 por vez)',
+                aoSelecionar: (nome) {
+                  final y = _years.firstWhere((x) => x.name == nome);
+                  _loadPrice(y);
+                },
               ),
             ],
             const SizedBox(height: 12),

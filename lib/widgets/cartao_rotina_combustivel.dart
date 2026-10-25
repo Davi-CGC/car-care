@@ -29,12 +29,16 @@ class CartaoRotinaCombustivel extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.06);
 
+    final usaModoEletrico = veiculo.eEletrico &&
+        (abastecimentos.isEmpty || abastecimentos.any((a) => a.eEletrico));
+
     final rotuloDistancia = estatisticas.distanciaMediaEntreAbastecimentos > 0
         ? '${formatarNumero(estatisticas.distanciaMediaEntreAbastecimentos, 0)} km'
         : '-- km';
 
-    final rotuloFrequencia = estatisticas.frequenciaMediaDias > 0
-        ? '${formatarNumero(estatisticas.frequenciaMediaDias, 2)} Dias'
+    final diasArredondados = estatisticas.frequenciaMediaDias.round();
+    final rotuloFrequencia = diasArredondados > 0
+        ? '$diasArredondados ${diasArredondados == 1 ? "Dia" : "Dias"}'
         : '-- Dias';
 
     final rotuloAutonomia = estatisticas.autonomiaEstimada > 0
@@ -66,12 +70,12 @@ class CartaoRotinaCombustivel extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: veiculo.eEletrico ? Colors.green[600] : corLaranja,
+                    color: usaModoEletrico ? Colors.green[600] : corLaranja,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
                     child: Icon(
-                      veiculo.eEletrico ? Icons.ev_station : Icons.show_chart,
+                      usaModoEletrico ? Icons.ev_station : Icons.show_chart,
                       color: Colors.white,
                       size: 24,
                     ),
@@ -80,14 +84,14 @@ class CartaoRotinaCombustivel extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    veiculo.eEletrico
+                    usaModoEletrico
                         ? 'Rotina de recarga elétrica'
                         : (veiculo.eHibrido
                             ? 'Rotina de abastecimento & recarga'
                             : 'Rotina de abastecimento'),
                     style: tema.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: veiculo.eEletrico ? Colors.green[600] : corLaranja,
+                      color: usaModoEletrico ? Colors.green[600] : corLaranja,
                       fontSize: 17,
                     ),
                   ),
@@ -101,7 +105,7 @@ class CartaoRotinaCombustivel extends StatelessWidget {
               children: [
                 Expanded(
                   child: _ItemMetrica(
-                    rotulo: veiculo.eEletrico ? 'Entre recargas' : 'Entre abastecimentos',
+                    rotulo: usaModoEletrico ? 'Entre recargas' : 'Entre abastecimentos',
                     valor: rotuloDistancia,
                   ),
                 ),
@@ -119,7 +123,7 @@ class CartaoRotinaCombustivel extends StatelessWidget {
               children: [
                 Expanded(
                   child: _ItemMetrica(
-                    rotulo: veiculo.eEletrico ? 'Autonomia (100% carga)' : 'Autonomia estimada',
+                    rotulo: usaModoEletrico ? 'Autonomia (100% carga)' : 'Autonomia estimada',
                     valor: rotuloAutonomia,
                   ),
                 ),
@@ -152,7 +156,7 @@ class CartaoRotinaCombustivel extends StatelessWidget {
                           ? Colors.white.withValues(alpha: 0.1)
                           : const Color(0xFFF1F1F4),
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        veiculo.eEletrico ? Colors.green[600]! : corLaranja,
+                        usaModoEletrico ? Colors.green[600]! : corLaranja,
                       ),
                     ),
                   ),
@@ -161,10 +165,10 @@ class CartaoRotinaCombustivel extends StatelessWidget {
                 Expanded(
                   child: Text(
                     estatisticas.totalAbastecimentos > 0
-                        ? (veiculo.eEletrico
+                        ? (usaModoEletrico
                             ? '${estatisticas.quantidadeTanqueCheio} de ${estatisticas.totalAbastecimentos} recargas até 100% (${formatarNumero(estatisticas.porcentagemTanqueCheio, 1)}%) — a eficiência (km/kWh) é medida de uma carga completa até a próxima.'
                             : '${estatisticas.quantidadeTanqueCheio} de ${estatisticas.totalAbastecimentos} abastecimentos com tanque cheio (${formatarNumero(estatisticas.porcentagemTanqueCheio, 1)}%) — a média é medida de um tanque cheio até o próximo.')
-                        : (veiculo.eEletrico
+                        : (usaModoEletrico
                             ? 'Registre suas recargas em kWh para acompanhar a autonomia e projeção mensal.'
                             : 'Cadastre abastecimentos para acompanhar sua rotina e projeção mensal.'),
                     style: tema.textTheme.bodySmall?.copyWith(

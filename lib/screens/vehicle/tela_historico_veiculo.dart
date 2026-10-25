@@ -162,7 +162,7 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                                                 borderRadius: BorderRadius.circular(6),
                                               ),
                                               child: Text(
-                                                '⚡ ${v.propulsion.shortLabel}',
+                                                v.propulsion.shortLabel,
                                                 style: TextStyle(
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.bold,
@@ -248,7 +248,7 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Resumo Financeiro e Média Diária
+                    // Resumo Financeiro
                     Row(
                       children: [
                         Expanded(
@@ -277,27 +277,39 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                         ),
                       ],
                     ),
-                    if (dailyKm > 0) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.goldenPollen.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                    const SizedBox(height: 10),
+
+                    // Consumo Médio e Média Diária (exclusivos por veículo no Log)
+                    Builder(
+                      builder: (_) {
+                        final lastFuel = vehicleFuels.isNotEmpty ? vehicleFuels.first : null;
+                        final consUnit = lastFuel?.consumptionUnit ?? v.defaultConsumptionUnit;
+                        return Row(
                           children: [
-                            const Icon(Icons.route, size: 18, color: AppColors.goldenPollen),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Média diária de distância: ${formatNumber(dailyKm, 1)} km/dia',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            Expanded(
+                              child: _StatMiniCard(
+                                label: 'Consumo médio',
+                                value: avgConsumption != null
+                                    ? '${formatNumber(avgConsumption, 1)} $consUnit'
+                                    : '--',
+                                icon: v.isElectric ? Icons.ev_station : Icons.local_gas_station,
+                                color: AppColors.goldenPollen,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _StatMiniCard(
+                                label: 'Média diária',
+                                value: dailyKm > 0
+                                    ? '${formatNumber(dailyKm, 1)} km/dia'
+                                    : '--',
+                                icon: Icons.route,
+                              ),
                             ),
                           ],
-                        ),
-                      ),
-                    ],
+                        );
+                      },
+                    ),
                     const SizedBox(height: 16),
 
                     // Card de Rotina de Abastecimento / Recarga
@@ -313,10 +325,14 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                           final lastFuel = vehicleFuels.isNotEmpty ? vehicleFuels.first : null;
                           final effectiveFuelType = lastFuel?.fuelType ??
                               (v.isElectric ? FuelTypes.eletricidade : FuelTypes.gasolina);
+                          final effectivePropulsion =
+                              (lastFuel != null && !lastFuel.isElectric && v.isElectric)
+                                  ? VehiclePropulsion.combustao
+                                  : v.propulsion;
                           final eval = Calculations.evaluateConsumption(
                             avgConsumption,
                             vehicleType: v.type,
-                            propulsion: v.propulsion,
+                            propulsion: effectivePropulsion,
                             fuelType: effectiveFuelType,
                           );
                           if (eval == null) return const SizedBox.shrink();
@@ -372,28 +388,42 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                       const SizedBox(height: 16),
                     ],
 
-                    // Filtros da Linha do Tempo
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Histórico de Eventos (${entries.length})',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    // Filtros da Linha do Tempo (empilhados para nunca espremer em celulares)
+                    Text(
+                      'Histórico de Eventos (${entries.length})',
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<_LogFilter>(
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        segments: [
+                          const ButtonSegment(
+                            value: _LogFilter.todos,
+                            label: Text('Tudo', maxLines: 1, softWrap: false),
                           ),
-                        ),
-                        SegmentedButton<_LogFilter>(
-                          segments: [
-                            const ButtonSegment(value: _LogFilter.todos, label: Text('Tudo')),
-                            const ButtonSegment(value: _LogFilter.manutencoes, label: Text('Serviços')),
-                            ButtonSegment(
-                              value: _LogFilter.abastecimentos,
-                              label: Text(v.isElectric ? 'Recargas' : 'Abast.'),
+                          const ButtonSegment(
+                            value: _LogFilter.manutencoes,
+                            label: Text('Serviços', maxLines: 1, softWrap: false),
+                          ),
+                          ButtonSegment(
+                            value: _LogFilter.abastecimentos,
+                            label: Text(
+                              v.isElectric ? 'Recargas' : 'Abastecimentos',
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                          selected: {_filter},
-                          onSelectionChanged: (s) => setState(() => _filter = s.first),
-                        ),
-                      ],
+                          ),
+                        ],
+                        selected: {_filter},
+                        onSelectionChanged: (s) => setState(() => _filter = s.first),
+                      ),
                     ),
                     const SizedBox(height: 12),
 

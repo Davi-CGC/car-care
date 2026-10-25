@@ -61,7 +61,7 @@ class _TelaManualState extends State<TelaManual> {
       icon: Icons.bolt,
       question: 'Como funciona o suporte para Carros, Motos e Caminhões Elétricos ou Híbridos?',
       answer:
-          'Ao cadastrar ou editar um veículo, você pode selecionar a motorização entre "Combustão", "Híbrido" ou "100% Elétrico ⚡" '
+          'Ao cadastrar ou editar um veículo, você pode selecionar a motorização entre "Combustão", "Híbrido" ou "100% Elétrico" '
           '(além disso, ao escolher marcas/modelos conhecidos como BYD, Tesla, Voltz, Watts, GWM Haval ou VW e-Delivery, o app detecta a propulsão automaticamente!).\n'
           'Quando o veículo é 100% Elétrico, o app adapta tudo:\n'
           '• Recargas exclusivamente em Eletricidade (kWh) e eficiência medida em km/kWh (sem opções de Gasolina, Etanol ou GNV).\n'
