@@ -197,30 +197,30 @@ cd carcare</code></pre>
       <!-- 8. Estrutura de Pastas -->
       <section id="estrutura-pastas">
         <h2>8. Estrutura de Pastas</h2>
-        <p>A arquitetura modular segue as boas práticas da comunidade Flutter:</p>
+        <p>A arquitetura modular segue as boas práticas da comunidade Flutter com nomenclatura padronizada em português:</p>
         <pre><code>carcare/
 ├── assets/
 │   └── images/               # Logo e identidade visual do app
 ├── lib/
 │   ├── main.dart             # Inicialização, tema e localização pt_BR
-│   ├── app.dart              # MaterialApp e AuthGate
-│   ├── firebase_options.dart # Credenciais geradas pelo FlutterFire CLI
-│   ├── models/               # Classes de dados (Vehicle, Maintenance, FuelRecord, Fipe)
-│   ├── repositories/         # Operações CRUD no Cloud Firestore (veículos, gastos, etc.)
+│   ├── aplicativo.dart       # MaterialApp (AplicativoCarCare) e PortaoAutenticacao
+│   ├── opcoes_firebase.dart  # Credenciais geradas pelo FlutterFire CLI
+│   ├── models/               # Classes de dados (veiculo.dart, manutencao.dart, abastecimento.dart, modelos_fipe.dart)
+│   ├── repositories/         # Operações CRUD no Cloud Firestore (repositorio_firestore.dart)
 │   ├── screens/
-│   │   ├── auth/             # Login, cadastro e AuthGate
-│   │   ├── fuel/             # Histórico de postos e consulta de preços praticados
-│   │   ├── home/             # Tela principal e 5 abas integradas
-│   │   ├── manual/           # Central de Dúvidas Frequentes (FAQ categorizado com busca)
-│   │   ├── reports/          # Gráficos em colunas (Semana, Mês, Ano) e consumo
-│   │   ├── services/         # Radar de Serviços Próximos (Google Maps & rotas)
-│   │   └── vehicle/          # Diário de Bordo e Lembretes (IPVA, Licenciamento, Seguro, Pneus)
-│   ├── services/             # Autenticação Firebase e API FIPE (carros, motos, caminhões)
-│   ├── theme/                # Paleta oficial (Pólen de Ouro, Obsidian, Branco Gelo)
-│   ├── utils/                # Cálculos, alertas de rodízio (ZMRC), documentos & pneus
-│   └── widgets/              # Rotina de abastecimento, termômetro, cards e logo
+│   │   ├── auth/             # portao_autenticacao.dart, tela_login.dart, tela_cadastro.dart
+│   │   ├── fuel/             # historico_postos_sheet.dart (Histórico de postos e preços)
+│   │   ├── home/             # tela_principal.dart (Tela principal, 5 abas e formulários)
+│   │   ├── manual/           # tela_manual.dart (Central de Dúvidas Frequentes / FAQ)
+│   │   ├── reports/          # aba_relatorios.dart (Gráficos em colunas e consumo)
+│   │   ├── services/         # servicos_proximos_sheet.dart (Radar Google Maps)
+│   │   └── vehicle/          # tela_historico_veiculo.dart e lembretes_veiculo_sheet.dart
+│   ├── services/             # servico_autenticacao.dart e servico_fipe.dart
+│   ├── theme/                # cores_app.dart e tema_app.dart
+│   ├── utils/                # calculos.dart, catalogo_veiculos.dart, constantes.dart, formatadores.dart, etc.
+│   └── widgets/              # cartao_veiculo.dart, cartao_rotina_combustivel.dart, termometro_consumo.dart, etc.
 ├── manual/                   # Manual técnico HTML/CSS completo e FAQ web
-├── test/                     # Testes automatizados (calculations_test.dart, widget_test.dart)
+├── test/                     # Testes automatizados (calculos_test.dart, widget_test.dart)
 ├── firestore.rules           # Regras de segurança em nuvem do Firestore
 ├── run.bat / run.ps1         # Scripts de inicialização rápida sem travas no Windows
 └── pubspec.yaml              # Dependências (url_launcher, flutterfire, etc.) e metadados</code></pre>
@@ -390,7 +390,7 @@ service cloud.firestore {
 
         <details class="faq-item">
           <summary>Como cadastrar meu carro, moto ou caminhão?</summary>
-          <div class="faq-answer">Na aba "Veículos" ou no botão flutuante da tela inicial, toque em "Novo Veículo". Selecione se o veículo é um <strong>Carro</strong>, <strong>Moto</strong> ou <strong>Caminhão</strong>, digite o nome e a placa. Você também pode tocar em "Consultar Tabela FIPE" no card do veículo para puxar automaticamente a marca, modelo, ano oficial e o valor médio de mercado!</div>
+          <div class="faq-answer">Na aba "Veículos" ou no botão flutuante da tela inicial, toque em "Novo Veículo". Selecione se o veículo é um <strong>Carro</strong>, <strong>Moto</strong> ou <strong>Caminhão</strong> e escolha a <strong>Marca</strong> e o <strong>Modelo</strong> diretamente na lista pesquisável (ou usando os chips rápidos de marcas e modelos da marca selecionada). Você também pode tocar em "Consultar Tabela FIPE" no card do veículo para puxar automaticamente o ano oficial e o valor médio de mercado!</div>
         </details>
 
         <details class="faq-item">
@@ -559,7 +559,7 @@ service cloud.firestore {
             </div>
           </div>
         </div>
-        <p>As cores principais estão centralizadas em <code>lib/theme/app_colors.dart</code>.</p>
+        <p>As cores principais estão centralizadas em <code>lib/theme/cores_app.dart</code>.</p>
       </section>
 
       <!-- 21. Como Trocar o Logo -->
@@ -578,7 +578,7 @@ service cloud.firestore {
       <section id="alterar-nome">
         <h2>22. Como Alterar o Nome do Aplicativo</h2>
         <ol>
-          <li><strong>No Flutter:</strong> altere <code>appName</code> em <code>lib/utils/constants.dart</code>.</li>
+          <li><strong>No Flutter:</strong> altere <code>nomeApp</code> em <code>lib/utils/constantes.dart</code>.</li>
           <li><strong>No Android:</strong> altere <code>android:label</code> em <code>android/app/src/main/AndroidManifest.xml</code>.</li>
           <li><strong>Na Web:</strong> altere a tag <code>&lt;title&gt;</code> em <code>web/index.html</code>.</li>
         </ol>
@@ -587,10 +587,10 @@ service cloud.firestore {
       <!-- 23. Como Adicionar Nova Tela -->
       <section id="adicionar-tela">
         <h2>23. Como Adicionar ou Alterar uma Tela</h2>
-        <p>Crie o arquivo em <code>lib/screens/nome_da_tela_screen.dart</code> e navegue utilizando:</p>
+        <p>Crie o arquivo em <code>lib/screens/tela_minha_nova_tela.dart</code> e navegue utilizando:</p>
         <pre><code>Navigator.push(
   context,
-  MaterialPageRoute(builder: (context) => const MinhaNovaTelaScreen()),
+  MaterialPageRoute(builder: (context) => const TelaMinhaNovaTela()),
 );</code></pre>
       </section>
 
@@ -599,7 +599,7 @@ service cloud.firestore {
         <h2>24. Como Adicionar ou Alterar um Campo no Banco de Dados</h2>
         <ol>
           <li>Adicione a propriedade no Model (<code>lib/models/...</code>), construtor, <code>toMap()</code> e <code>fromDoc()</code>.</li>
-          <li>Adicione o campo correspondente no formulário da tela (<code>_FuelFormSheetState</code>, <code>_VehicleFormSheetState</code>, etc.).</li>
+          <li>Adicione o campo correspondente no formulário da tela (<code>_FuelFormSheetState</code>, <code>_VehicleFormSheetState</code>, etc. em <code>lib/screens/home/tela_principal.dart</code>).</li>
         </ol>
       </section>
 

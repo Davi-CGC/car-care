@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
-import 'app.dart';
+import 'aplicativo.dart';
 import 'firebase_options.dart';
-import 'theme/theme_controller.dart';
+import 'theme/controlador_tema.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,15 +15,15 @@ Future<void> main() async {
   Intl.defaultLocale = 'pt_BR';
 
   // Tema salvo (claro/escuro).
-  await themeController.load();
+  await controladorTema.carregar();
 
   // Firebase. Se não estiver configurado, o app mostra uma tela de ajuda.
-  String? firebaseError;
+  String? erroFirebase;
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   } catch (e) {
-    firebaseError = e.toString();
+    erroFirebase = e.toString();
   }
 
-  runApp(CarCareApp(firebaseError: firebaseError));
+  runApp(AplicativoCarCare(erroFirebase: erroFirebase));
 }
