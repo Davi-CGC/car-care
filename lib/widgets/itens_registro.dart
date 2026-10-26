@@ -105,14 +105,16 @@ class ItemAbastecimentoTile extends StatelessWidget {
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           Text(
-                            '$partePosto${formatarData(r.data)} • ${r.tipoCombustivel} (${formatarNumero(r.litros, 2)} ${r.unidade})',
+                            r.litros > 0
+                                ? '$partePosto${formatarData(r.data)} • ${r.tipoCombustivel} (${formatarNumero(r.litros, 2)} ${r.unidade})'
+                                : '$partePosto${formatarData(r.data)} • Viagem sem abastecimento',
                             style: const TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
                     Text(
-                      formatarMoeda(r.precoTotal),
+                      r.precoTotal > 0 ? formatarMoeda(r.precoTotal) : 'Sem Custo',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,

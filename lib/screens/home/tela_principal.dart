@@ -532,11 +532,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
           ),
         ),
         const SizedBox(height: 14),
-        // PAINEL DE CONTROLE DE VIAGEM E FROTA DE CAMINHÕES (INICIAR / FINALIZAR VIAGEM + LOG)
-        if (vehicles.any((v) => v.isTruck)) ...[
-          _buildPainelViagemCaminhao(vehicles, fuels),
-          const SizedBox(height: 14),
-        ],
         if (filtered.isEmpty)
           const EmptyState(
             icon: Icons.local_gas_station_outlined,
@@ -564,156 +559,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
               )),
         ],
       ],
-    );
-  }
-
-  /// Painel de Controle de Viagem / Frota de Caminhões exibido na aba de Abastecimento.
-  Widget _buildPainelViagemCaminhao(List<Vehicle> vehicles, List<FuelRecord> fuels) {
-    final caminhoes = _selectedVehicleFilter != null
-        ? vehicles.where((v) => v.id == _selectedVehicleFilter && v.isTruck).toList()
-        : vehicles.where((v) => v.isTruck).toList();
-    if (caminhoes.isEmpty) return const SizedBox.shrink();
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: caminhoes.map((caminhao) {
-        final emViagem = caminhao.viagemAtiva;
-        final corBorda = emViagem ? AppColors.success : AppColors.goldenPollen;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E24) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: corBorda.withValues(alpha: 0.55), width: 1.5),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: corBorda.withValues(alpha: 0.16),
-                    child: Icon(
-                      emViagem ? Icons.route : Icons.local_shipping,
-                      color: corBorda,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Controle de Viagem / Frota • ${caminhao.name}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: corBorda.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                emViagem ? 'EM VIAGEM' : 'DISPONÍVEL',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: corBorda,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          emViagem
-                              ? 'Saída em ${formatKm(caminhao.viagemKmInicial ?? caminhao.currentKm)}'
-                                  '${caminhao.resumoImplementoCaminhao.isNotEmpty ? " • ${caminhao.resumoImplementoCaminhao}" : ""}'
-                                  '${caminhao.viagemPesoCargaTon != null && caminhao.viagemPesoCargaTon! > 0 ? " • Carga: ${formatNumber(caminhao.viagemPesoCargaTon!, 1)} t" : ""}'
-                              : 'Odômetro: ${formatKm(caminhao.currentKm)}'
-                                  '${caminhao.resumoImplementoCaminhao.isNotEmpty ? " • ${caminhao.resumoImplementoCaminhao}" : " • Registre tipo (Baú/Caçamba), eixos e carga"}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (emViagem && caminhao.viagemNotaFiscalCte.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Nota Fiscal / CT-e: ${caminhao.viagemNotaFiscalCte}'
-                  '${caminhao.viagemRota.isNotEmpty ? " • Rota: ${caminhao.viagemRota}" : ""}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: emViagem
-                        ? FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              foregroundColor: Colors.white,
-                            ),
-                            icon: const Icon(Icons.flag_rounded, size: 18),
-                            label: const Text(
-                              'FINALIZAR VIAGEM',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                            onPressed: () => _showFuelDialog(
-                              context,
-                              vehicles,
-                              null,
-                              fuels,
-                              caminhao.id,
-                              true,
-                            ),
-                          )
-                        : FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.goldenPollen,
-                              foregroundColor: AppColors.obsidian,
-                            ),
-                            icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                            label: const Text(
-                              'INICIAR VIAGEM',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                            onPressed: () => _showIniciarViagemDialog(context, caminhao),
-                          ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.menu_book, size: 16),
-                      label: const Text('Log', style: TextStyle(fontSize: 12)),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => VehicleLogScreen(vehicle: caminhao),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -866,6 +711,136 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // CONTROLE DE VIAGEM E FROTA (CAMINHÕES)
+                  if (vehicle.isTruck) ...[
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: (vehicle.viagemAtiva ? AppColors.success : AppColors.goldenPollen)
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: (vehicle.viagemAtiva ? AppColors.success : AppColors.goldenPollen)
+                              .withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                vehicle.viagemAtiva ? Icons.flag_rounded : Icons.local_shipping,
+                                color: vehicle.viagemAtiva ? AppColors.success : AppColors.goldenPollen,
+                                size: 24,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      vehicle.viagemAtiva
+                                          ? 'Viagem em Andamento'
+                                          : 'Controle de Frota do Caminhão',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                    Text(
+                                      vehicle.viagemAtiva
+                                          ? 'Iniciada no Km ${formatKm(vehicle.viagemKmInicial ?? vehicle.currentKm)} • ${vehicle.resumoImplementoCaminhao}'
+                                          : 'Inicie uma viagem para registrar implemento, carga e percurso.',
+                                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (vehicle.viagemAtiva) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '• Implemento: ${vehicle.resumoImplementoCaminhao.isNotEmpty ? vehicle.resumoImplementoCaminhao : "Caminhão"}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            Text(
+                              '• Km Inicial: ${formatKm(vehicle.viagemKmInicial ?? vehicle.currentKm)}'
+                              '${vehicle.viagemPesoCargaTon != null && vehicle.viagemPesoCargaTon! > 0 ? " • Carga: ${formatNumber(vehicle.viagemPesoCargaTon!, 1)} t" : ""}'
+                              '${vehicle.viagemNotaFiscalCte.isNotEmpty ? " (NF/CT-e: ${vehicle.viagemNotaFiscalCte})" : ""}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            if (vehicle.viagemRota.isNotEmpty)
+                              Text(
+                                '• Rota: ${vehicle.viagemRota}',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              icon: const Icon(Icons.check_circle_outline, size: 20),
+                              label: const Text(
+                                'FINALIZAR VIAGEM',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showFinalizarViagemDialog(context, vehicle);
+                              },
+                            ),
+                            const SizedBox(height: 4),
+                            Center(
+                              child: TextButton.icon(
+                                icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.grey),
+                                label: const Text(
+                                  'Cancelar Viagem Sem Registro',
+                                  style: TextStyle(color: Colors.grey, fontSize: 11.5),
+                                ),
+                                onPressed: () async {
+                                  final confirm = await confirmDialog(
+                                    context,
+                                    title: 'Cancelar Viagem',
+                                    message:
+                                        'Deseja cancelar o monitoramento desta viagem sem salvar dados no histórico?',
+                                  );
+                                  if (confirm) {
+                                    await _vehicleRepo.cancelarViagemCaminhao(vehicle);
+                                    if (context.mounted) {
+                                      Navigator.pop(context);
+                                      showMessage(context, 'Viagem cancelada.');
+                                    }
+                                  }
+                                },
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.goldenPollen,
+                                foregroundColor: AppColors.obsidian,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                              label: const Text(
+                                'INICIAR VIAGEM',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _showIniciarViagemDialog(context, vehicle);
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.amber[800],
@@ -1119,6 +1094,20 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
     );
   }
 
+  // --- Finalizar Viagem de Caminhão (Controle de Frota) ---
+  void _showFinalizarViagemDialog(BuildContext context, Vehicle caminhao) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => _FinalizarViagemCaminhaoSheet(
+        caminhao: caminhao,
+        vRepo: _vehicleRepo,
+        fRepo: _fuelRepo,
+      ),
+    );
+  }
+
   // --- Novo Abastecimento ---
   void _showFuelDialog(
     BuildContext context,
@@ -1126,7 +1115,6 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
     FuelRecord? existing,
     List<FuelRecord> fuels = const [],
     String? forcarVeiculoId,
-    bool iniciarFinalizandoViagem = false,
   ]) {
     showModalBottomSheet(
       context: context,
@@ -1136,14 +1124,9 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
         vehicles: vehicles,
         existing: existing,
         initialVehicleId: forcarVeiculoId ?? _selectedVehicleFilter,
-        iniciarFinalizandoViagem: iniciarFinalizandoViagem,
         fuels: fuels,
         fRepo: _fuelRepo,
         vRepo: _vehicleRepo,
-        aoPedirIniciarViagem: (caminhao) {
-          Navigator.pop(context);
-          _showIniciarViagemDialog(this.context, caminhao);
-        },
       ),
     );
   }
@@ -2843,10 +2826,7 @@ class _IniciarViagemCaminhaoSheetState extends State<_IniciarViagemCaminhaoSheet
     'Porta-Container',
   ];
 
-  static const List<int> _opcoesEixos = [2, 3, 4, 5, 6, 7, 9];
-
   late String _tipoCarroceria;
-  late int _numeroEixos;
   late final TextEditingController _kmInicialCtrl;
   late final TextEditingController _pesoCargaCtrl;
   late final TextEditingController _notaFiscalCtrl;
@@ -2858,7 +2838,6 @@ class _IniciarViagemCaminhaoSheetState extends State<_IniciarViagemCaminhaoSheet
     super.initState();
     final c = widget.caminhao;
     _tipoCarroceria = c.carroceriaEfetiva.isNotEmpty ? c.carroceriaEfetiva : 'Baú';
-    _numeroEixos = c.eixosEfetivos ?? 3;
     _kmInicialCtrl = TextEditingController(text: '${c.currentKm}');
     _pesoCargaCtrl = TextEditingController(
       text: (c.viagemPesoCargaTon != null && c.viagemPesoCargaTon! > 0)
@@ -2888,7 +2867,7 @@ class _IniciarViagemCaminhaoSheetState extends State<_IniciarViagemCaminhaoSheet
       await widget.repo.iniciarViagemCaminhao(
         veiculo: widget.caminhao,
         tipoCarroceria: _tipoCarroceria,
-        numeroEixos: _numeroEixos,
+        numeroEixos: widget.caminhao.eixosEfetivos,
         kmInicial: kmInicial,
         pesoCargaTon: pesoCarga,
         notaFiscalCte: _notaFiscalCtrl.text.trim(),
@@ -2899,7 +2878,7 @@ class _IniciarViagemCaminhaoSheetState extends State<_IniciarViagemCaminhaoSheet
         Navigator.pop(context);
         showMessage(
           context,
-          'Viagem iniciada no ${widget.caminhao.name} ($_tipoCarroceria • $_numeroEixos Eixos)! Quando voltar para abastecer, toque em FINALIZAR VIAGEM.',
+          'Viagem iniciada no ${widget.caminhao.name} ($_tipoCarroceria)! O percurso agora está sendo monitorado.',
         );
       }
     } catch (e) {
@@ -2959,7 +2938,7 @@ class _IniciarViagemCaminhaoSheetState extends State<_IniciarViagemCaminhaoSheet
               ),
               const SizedBox(height: 14),
               const Text(
-                'Tipo de Implemento / Carroceria (Baú, Caçamba, etc.):',
+                'Tipo de Implemento / Carroceria:',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
               ),
               const SizedBox(height: 6),
@@ -2978,30 +2957,6 @@ class _IniciarViagemCaminhaoSheetState extends State<_IniciarViagemCaminhaoSheet
                       color: sel ? AppColors.obsidian : null,
                     ),
                     onSelected: (_) => setState(() => _tipoCarroceria = op),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'Número de Eixos:',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: _opcoesEixos.map((eixos) {
-                  final sel = _numeroEixos == eixos;
-                  return ChoiceChip(
-                    label: Text('$eixos Eixos'),
-                    selected: sel,
-                    selectedColor: AppColors.goldenPollen,
-                    labelStyle: TextStyle(
-                      fontSize: 12,
-                      fontWeight: sel ? FontWeight.bold : FontWeight.normal,
-                      color: sel ? AppColors.obsidian : null,
-                    ),
-                    onSelected: (_) => setState(() => _numeroEixos = eixos),
                   );
                 }).toList(),
               ),
@@ -3059,27 +3014,408 @@ class _IniciarViagemCaminhaoSheetState extends State<_IniciarViagemCaminhaoSheet
 }
 
 // ==========================================
-// FORMULÁRIO DE ABASTECIMENTO (E FECHAMENTO DE VIAGEM DE CAMINHÃO)
+// MODAL DE FINALIZAR VIAGEM (CONTROLE DE FROTA DE CAMINHÕES)
+// ==========================================
+class _FinalizarViagemCaminhaoSheet extends StatefulWidget {
+  final Vehicle caminhao;
+  final VehicleRepository vRepo;
+  final FuelRepository fRepo;
+
+  const _FinalizarViagemCaminhaoSheet({
+    required this.caminhao,
+    required this.vRepo,
+    required this.fRepo,
+  });
+
+  @override
+  State<_FinalizarViagemCaminhaoSheet> createState() => _FinalizarViagemCaminhaoSheetState();
+}
+
+class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoSheet> {
+  final _formKey = GlobalKey<FormState>();
+
+  late final TextEditingController _kmFinalCtrl;
+  late final TextEditingController _litrosCtrl;
+  late final TextEditingController _precoTotalCtrl;
+  late final TextEditingController _postoCtrl;
+
+  bool _houveAbastecimento = false;
+  late String _tipoCombustivel;
+  DateTime _data = DateTime.now();
+  bool _salvando = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.caminhao;
+    _kmFinalCtrl = TextEditingController(text: '${c.currentKm}');
+    _litrosCtrl = TextEditingController();
+    _precoTotalCtrl = TextEditingController();
+    _postoCtrl = TextEditingController();
+
+    final allowed = FuelTypes.forVehicle(c);
+    _tipoCombustivel = allowed.contains(FuelTypes.diesel) ? FuelTypes.diesel : allowed.first;
+  }
+
+  @override
+  void dispose() {
+    _kmFinalCtrl.dispose();
+    _litrosCtrl.dispose();
+    _precoTotalCtrl.dispose();
+    _postoCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirmarFinalizacaoViagem() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _salvando = true);
+
+    try {
+      final c = widget.caminhao;
+      final kmInicial = c.viagemKmInicial ?? c.currentKm;
+      final kmFinal = int.tryParse(_kmFinalCtrl.text.trim()) ?? kmInicial;
+      final litros = _houveAbastecimento ? (parseNumber(_litrosCtrl.text.trim()) ?? 0.0) : 0.0;
+      final precoTotal = _houveAbastecimento ? (parseNumber(_precoTotalCtrl.text.trim()) ?? 0.0) : 0.0;
+      final posto = _postoCtrl.text.trim();
+      final tipoCarroceria = c.viagemTipoCarroceria.isNotEmpty
+          ? c.viagemTipoCarroceria
+          : c.carroceriaEfetiva;
+
+      // 1. Atualiza caminhão e finaliza a viagem ativa
+      await widget.vRepo.finalizarViagemCaminhao(
+        veiculo: c,
+        kmFinal: kmFinal,
+        tipoCarroceria: tipoCarroceria,
+        numeroEixos: c.viagemNumeroEixos ?? c.eixosEfetivos,
+      );
+
+      // 2. Registra o histórico da viagem no log
+      final registroViagem = FuelRecord(
+        vehicleId: c.id,
+        date: _data,
+        km: kmFinal,
+        kmInicialViagem: kmInicial,
+        tipoCarroceria: tipoCarroceria,
+        numeroEixos: c.viagemNumeroEixos ?? c.eixosEfetivos,
+        pesoCargaTon: c.viagemPesoCargaTon,
+        notaFiscalCte: c.viagemNotaFiscalCte,
+        rotaViagem: c.viagemRota,
+        fuelType: _houveAbastecimento ? _tipoCombustivel : 'Viagem Concluída',
+        liters: litros,
+        totalPrice: precoTotal,
+        isFullTank: true,
+        gasStation: posto,
+      );
+
+      await widget.fRepo.add(registroViagem);
+
+      if (mounted) {
+        Navigator.pop(context);
+        showMessage(
+          context,
+          'Viagem do ${c.name} finalizada com sucesso! Todos os dados foram salvos no Log.',
+        );
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, 'Erro ao finalizar viagem: $e', error: true);
+    } finally {
+      if (mounted) setState(() => _salvando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final c = widget.caminhao;
+    final kmInicial = c.viagemKmInicial ?? c.currentKm;
+    final kmFinal = int.tryParse(_kmFinalCtrl.text.trim()) ?? kmInicial;
+    final diffKm = kmFinal - kmInicial;
+    final litros = parseNumber(_litrosCtrl.text.trim()) ?? 0.0;
+    final precoTotal = parseNumber(_precoTotalCtrl.text.trim()) ?? 0.0;
+
+    final double? resultado1KmL = (diffKm > 0 && litros > 0) ? (diffKm / litros) : null;
+    final double? resultado2CustoKm = (diffKm > 0 && precoTotal > 0) ? (precoTotal / diffKm) : null;
+
+    final implementoViagem = c.viagemTipoCarroceria.isNotEmpty
+        ? c.viagemTipoCarroceria
+        : (c.carroceriaEfetiva.isNotEmpty ? c.carroceriaEfetiva : 'Baú');
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.flag_rounded, color: AppColors.success, size: 28),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Finalizar Viagem • Frota',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          c.name,
+                          style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // DADOS FIXOS DA VIAGEM INICIADA (SEM PRECISAR DIGITAR IMPLEMENTO DE NOVO!)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.goldenPollen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 16, color: AppColors.goldenPollen),
+                        SizedBox(width: 6),
+                        Text(
+                          'Dados Registrados no Início da Viagem:',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text('• Tipo de Implemento: $implementoViagem (já registrado)'),
+                    Text('• Km Inicial: ${formatKm(kmInicial)}'),
+                    if (c.viagemPesoCargaTon != null && c.viagemPesoCargaTon! > 0)
+                      Text('• Peso da Carga: ${formatNumber(c.viagemPesoCargaTon!, 1)} t (NF/CT-e: ${c.viagemNotaFiscalCte.isNotEmpty ? c.viagemNotaFiscalCte : "conforme documento"})'),
+                    if (c.viagemRota.isNotEmpty) Text('• Rota: ${c.viagemRota}'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              AppTextField(
+                controller: _kmFinalCtrl,
+                label: 'Km Final da Viagem (Odômetro de Chegada)',
+                icon: Icons.speed,
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  final n = int.tryParse(v?.trim() ?? '');
+                  if (n == null || n <= 0) return 'Informe o Km Final';
+                  if (n < kmInicial) return 'Km Final deve ser maior ou igual a ${formatKm(kmInicial)}';
+                  return null;
+                },
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
+
+              // CHAVE OPCIONAL: ABASTECIMENTO DURANTE A VIAGEM
+              Card(
+                elevation: 0,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1E1E24)
+                    : Colors.grey[50],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: _houveAbastecimento
+                        ? AppColors.goldenPollen.withValues(alpha: 0.5)
+                        : Colors.grey.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: SwitchListTile(
+                  value: _houveAbastecimento,
+                  activeThumbColor: AppColors.goldenPollen,
+                  title: const Text(
+                    'Houve abastecimento de combustível nesta viagem?',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                  ),
+                  subtitle: const Text(
+                    'Opcional. Se abasteceu, informe litros e valor para calcular o Km/L e o custo por Km.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  onChanged: (val) => setState(() => _houveAbastecimento = val),
+                ),
+              ),
+
+              if (_houveAbastecimento) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _tipoCombustivel,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de Combustível',
+                    prefixIcon: Icon(Icons.local_gas_station),
+                  ),
+                  items: FuelTypes.forVehicle(c)
+                      .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _tipoCombustivel = val);
+                  },
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppTextField(
+                        controller: _litrosCtrl,
+                        label: 'Litros Abastecidos',
+                        hint: '0,0',
+                        icon: Icons.opacity,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        validator: (v) {
+                          if (!_houveAbastecimento) return null;
+                          return Validators.number(v, field: 'Litros');
+                        },
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AppTextField(
+                        controller: _precoTotalCtrl,
+                        label: r'Valor Pago (R$)',
+                        hint: '0,00',
+                        icon: Icons.payments_outlined,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        validator: (v) {
+                          if (!_houveAbastecimento) return null;
+                          return Validators.number(v, field: 'Valor Pago');
+                        },
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                AppTextField(
+                  controller: _postoCtrl,
+                  label: 'Posto de Combustível (opcional)',
+                  hint: 'Nome do posto',
+                  icon: Icons.storefront,
+                ),
+              ],
+              const SizedBox(height: 14),
+
+              // CARD DE RESULTADO DA VIAGEM
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.assessment, size: 18, color: AppColors.success),
+                        SizedBox(width: 8),
+                        Text(
+                          'Resumo da Viagem e do Caminhão',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('• Tipo: $implementoViagem'),
+                    Text('• Km Inicial e Km Final: ${formatKm(kmInicial)} ➔ ${formatKm(kmFinal)} (${formatKm(diffKm > 0 ? diffKm : 0)} rodados)'),
+                    if (c.viagemPesoCargaTon != null && c.viagemPesoCargaTon! > 0)
+                      Text('• Peso da Carga: ${formatNumber(c.viagemPesoCargaTon!, 1)} t (NF: ${c.viagemNotaFiscalCte.isNotEmpty ? c.viagemNotaFiscalCte : "conforme documento"})'),
+                    if (_houveAbastecimento) ...[
+                      Text('• Litros Abastecidos e Valor Pago: ${formatNumber(litros, 2)} L • ${formatMoney(precoTotal)}'),
+                      const Divider(height: 14),
+                      Text(
+                        '• Resultado 1: Km/L da viagem: ${resultado1KmL != null ? "${formatNumber(resultado1KmL, 2)} km/l" : "Preencha km e litros"}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.success, fontSize: 13),
+                      ),
+                      Text(
+                        '• Resultado 2: Custo de Combustível por Km Rodado: ${resultado2CustoKm != null ? "${formatMoney(resultado2CustoKm)}/km" : "Preencha valor e km"}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.goldenPollen, fontSize: 13),
+                      ),
+                    ] else ...[
+                      const Divider(height: 14),
+                      const Text(
+                        '• Viagem finalizada sem abastecimento registrado.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.calendar_month),
+                title: Text('Data de Finalização: ${formatDate(_data)}'),
+                trailing: TextButton(
+                  child: const Text('Alterar'),
+                  onPressed: () async {
+                    final picked = await pickDate(context, _data);
+                    if (picked != null) setState(() => _data = picked);
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              LoadingButton(
+                label: 'Confirmar e Finalizar Viagem',
+                loading: _salvando,
+                onPressed: _confirmarFinalizacaoViagem,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==========================================
+// FORMULÁRIO DE ABASTECIMENTO / RECARGA ELÉTRICA
 // ==========================================
 class _FuelFormSheet extends StatefulWidget {
   final List<Vehicle> vehicles;
   final FuelRecord? existing;
   final String? initialVehicleId;
-  final bool iniciarFinalizandoViagem;
   final List<FuelRecord> fuels;
   final FuelRepository fRepo;
   final VehicleRepository vRepo;
-  final ValueChanged<Vehicle>? aoPedirIniciarViagem;
 
   const _FuelFormSheet({
     required this.vehicles,
     this.existing,
     this.initialVehicleId,
-    this.iniciarFinalizandoViagem = false,
     this.fuels = const [],
     required this.fRepo,
     required this.vRepo,
-    this.aoPedirIniciarViagem,
   });
 
   @override
@@ -3090,19 +3426,6 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nearbyService = ServicoPostosProximos();
 
-  static const List<String> _opcoesCarroceria = [
-    'Baú',
-    'Caçamba',
-    'Sider',
-    'Graneleiro',
-    'Prancha',
-    'Tanque',
-    'Frigorífico',
-    'Porta-Container',
-  ];
-
-  static const List<int> _opcoesEixos = [2, 3, 4, 5, 6, 7, 9];
-
   late String _selectedVehicleId;
   late String _selectedFuelType;
   late DateTime _date;
@@ -3111,14 +3434,6 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   late final TextEditingController _liters;
   late final TextEditingController _price;
   late final TextEditingController _gasStation;
-
-  // Campos de Viagem / Controle de Frota de Caminhão
-  bool _registrarViagemCaminhao = false;
-  late String _tipoCarroceria;
-  late int _numeroEixos;
-  late final TextEditingController _kmInicialViagemCtrl;
-  late final TextEditingController _pesoCargaCtrl;
-  late final TextEditingController _notaFiscalCteCtrl;
 
   bool _isFullTank = true;
   bool _isCalculating = false;
@@ -3164,31 +3479,6 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     return allowed.first;
   }
 
-  void _sincronizarCamposViagemDoVeiculo(Vehicle v, [FuelRecord? e]) {
-    if (e != null && e.possuiDadosViagem) {
-      _registrarViagemCaminhao = true;
-      _tipoCarroceria = e.tipoCarroceria.isNotEmpty
-          ? e.tipoCarroceria
-          : (v.carroceriaEfetiva.isNotEmpty ? v.carroceriaEfetiva : 'Baú');
-      _numeroEixos = e.numeroEixos ?? v.eixosEfetivos ?? 3;
-      _kmInicialViagemCtrl.text = '${e.kmInicialViagem ?? v.currentKm}';
-      _pesoCargaCtrl.text =
-          (e.pesoCargaTon != null && e.pesoCargaTon! > 0) ? '${e.pesoCargaTon}' : '';
-      _notaFiscalCteCtrl.text = e.notaFiscalCte;
-      return;
-    }
-    _registrarViagemCaminhao =
-        v.isTruck && (widget.iniciarFinalizandoViagem || v.viagemAtiva);
-    _tipoCarroceria = v.carroceriaEfetiva.isNotEmpty ? v.carroceriaEfetiva : 'Baú';
-    _numeroEixos = v.eixosEfetivos ?? 3;
-    _kmInicialViagemCtrl.text = '${v.viagemKmInicial ?? v.currentKm}';
-    _pesoCargaCtrl.text =
-        (v.viagemPesoCargaTon != null && v.viagemPesoCargaTon! > 0)
-            ? '${v.viagemPesoCargaTon}'
-            : '';
-    _notaFiscalCteCtrl.text = v.viagemNotaFiscalCte;
-  }
-
   @override
   void initState() {
     super.initState();
@@ -3217,15 +3507,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     _gasStation = TextEditingController(text: e?.gasStation ?? '');
     _isFullTank = e?.isFullTank ?? true;
 
-    _kmInicialViagemCtrl = TextEditingController();
-    _pesoCargaCtrl = TextEditingController();
-    _notaFiscalCteCtrl = TextEditingController();
-    _sincronizarCamposViagemDoVeiculo(vehicle, e);
-
     _km.addListener(() => setState(() {}));
-    _kmInicialViagemCtrl.addListener(() => setState(() {}));
-    _pesoCargaCtrl.addListener(() => setState(() {}));
-    _notaFiscalCteCtrl.addListener(() => setState(() {}));
     _gasStation.addListener(() => setState(() {}));
     _fetchNearbyStations();
   }
@@ -3254,9 +3536,6 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
   @override
   void dispose() {
     _km.dispose();
-    _kmInicialViagemCtrl.dispose();
-    _pesoCargaCtrl.dispose();
-    _notaFiscalCteCtrl.dispose();
     _pricePerUnit.dispose();
     _liters.dispose();
     _price.dispose();
@@ -3277,13 +3556,11 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
         _km.text = '${newVehicle.currentKm}';
         _selectedFuelType = _defaultFuelTypeForVehicle(newVehicle);
         _gasStation.clear();
-        _sincronizarCamposViagemDoVeiculo(newVehicle);
       } else {
         final allowed = FuelTypes.forVehicle(newVehicle);
         if (!allowed.contains(_selectedFuelType)) {
           _selectedFuelType = _defaultFuelTypeForVehicle(newVehicle);
         }
-        _sincronizarCamposViagemDoVeiculo(newVehicle, widget.existing);
       }
     });
     if (oldFuel != _selectedFuelType) {
@@ -3362,13 +3639,6 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
       final priceVal = parseNumber(_price.text.trim()) ?? 0;
       final isEv = _selectedFuelType == FuelTypes.eletricidade;
 
-      final salvarDadosViagem =
-          _registrarViagemCaminhao && (vehicle.isTruck || (widget.existing?.possuiDadosViagem ?? false));
-      final kmInicialVal = salvarDadosViagem
-          ? (int.tryParse(_kmInicialViagemCtrl.text.trim()) ?? vehicle.viagemKmInicial ?? vehicle.currentKm)
-          : null;
-      final pesoCargaVal = salvarDadosViagem ? parseNumber(_pesoCargaCtrl.text.trim()) : null;
-
       final record = FuelRecord(
         id: widget.existing?.id ?? '',
         vehicleId: _selectedVehicleId,
@@ -3379,12 +3649,12 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
         totalPrice: priceVal,
         isFullTank: _isFullTank,
         gasStation: _gasStation.text.trim(),
-        kmInicialViagem: kmInicialVal,
-        tipoCarroceria: salvarDadosViagem ? _tipoCarroceria : '',
-        numeroEixos: salvarDadosViagem ? _numeroEixos : null,
-        pesoCargaTon: pesoCargaVal,
-        notaFiscalCte: salvarDadosViagem ? _notaFiscalCteCtrl.text.trim() : '',
-        rotaViagem: salvarDadosViagem ? vehicle.viagemRota : '',
+        kmInicialViagem: widget.existing?.kmInicialViagem,
+        tipoCarroceria: widget.existing?.tipoCarroceria ?? '',
+        numeroEixos: widget.existing?.numeroEixos,
+        pesoCargaTon: widget.existing?.pesoCargaTon,
+        notaFiscalCte: widget.existing?.notaFiscalCte ?? '',
+        rotaViagem: widget.existing?.rotaViagem ?? '',
       );
 
       if (widget.existing == null) {
@@ -3394,22 +3664,11 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
       }
 
       final kmUpdated = kmVal > vehicle.currentKm;
-      if (salvarDadosViagem && vehicle.isTruck) {
-        await widget.vRepo.finalizarViagemCaminhao(
-          veiculo: vehicle,
-          kmFinal: kmVal,
-          tipoCarroceria: _tipoCarroceria,
-          numeroEixos: _numeroEixos,
-        );
-      } else {
-        await widget.vRepo.updateKmIfGreater(vehicle, kmVal);
-      }
+      await widget.vRepo.updateKmIfGreater(vehicle, kmVal);
 
       if (mounted) {
         Navigator.pop(context);
-        final actionWord = salvarDadosViagem
-            ? 'Viagem finalizada e abastecimento registrado no Log'
-            : (isEv ? 'Recarga elétrica salva' : 'Abastecimento salvo');
+        final actionWord = isEv ? 'Recarga elétrica salva' : 'Abastecimento salvo';
         if (kmUpdated) {
           showMessage(
             context,
@@ -3498,12 +3757,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     final enteredKm = int.tryParse(_km.text.trim()) ?? 0;
     final enteredVolume = parseNumber(_liters.text.trim()) ?? 0.0;
     final enteredPrice = parseNumber(_price.text.trim()) ?? 0.0;
-    final isModoViagemCaminhao =
-        _registrarViagemCaminhao && (vehicle.isTruck || (widget.existing?.possuiDadosViagem ?? false));
-    final kmBase = isModoViagemCaminhao
-        ? (int.tryParse(_kmInicialViagemCtrl.text.trim()) ?? vehicle.viagemKmInicial ?? currentVehicleKm)
-        : currentVehicleKm;
-    final diffKm = enteredKm - kmBase;
+    final diffKm = enteredKm - currentVehicleKm;
     final bool showCalc = diffKm > 0 && enteredVolume > 0;
     final double? tripConsumption = showCalc ? diffKm / enteredVolume : null;
     final double? tripCostPerKm = (diffKm > 0 && enteredPrice > 0) ? enteredPrice / diffKm : null;
@@ -3532,11 +3786,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      isModoViagemCaminhao
-                          ? 'Finalizar Viagem e Abastecer'
-                          : (widget.existing == null
-                              ? (isElectricFuel ? 'Nova Recarga Elétrica' : 'Novo Abastecimento')
-                              : (isElectricFuel ? 'Editar Recarga Elétrica' : 'Editar Abastecimento')),
+                      widget.existing == null
+                          ? (isElectricFuel ? 'Nova Recarga Elétrica' : 'Novo Abastecimento')
+                          : (isElectricFuel ? 'Editar Recarga Elétrica' : 'Editar Abastecimento'),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -3596,199 +3848,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
               ),
               const SizedBox(height: 14),
 
-              // CONTROLE DE FROTA / VIAGEM DO CAMINHÃO (INICIAR VIAGEM / FINALIZAR VIAGEM)
-              if (vehicle.isTruck || (widget.existing?.possuiDadosViagem ?? false)) ...[
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.goldenPollen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isModoViagemCaminhao
-                          ? AppColors.goldenPollen
-                          : AppColors.goldenPollen.withValues(alpha: 0.35),
-                      width: isModoViagemCaminhao ? 1.5 : 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.local_shipping, color: AppColors.goldenPollen, size: 22),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Controle de Frota e Viagem do Caminhão',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                                ),
-                                Text(
-                                  vehicle.viagemAtiva
-                                      ? 'Viagem iniciada em ${formatKm(vehicle.viagemKmInicial ?? vehicle.currentKm)} • ${vehicle.resumoImplementoCaminhao}'
-                                      : 'Inicie uma viagem ou finalize a viagem atual junto com o abastecimento',
-                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          if (widget.existing == null) ...[
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  if (widget.aoPedirIniciarViagem != null) {
-                                    widget.aoPedirIniciarViagem!(vehicle);
-                                  } else {
-                                    Navigator.pop(context);
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      useSafeArea: true,
-                                      builder: (_) => _IniciarViagemCaminhaoSheet(
-                                        caminhao: vehicle,
-                                        repo: widget.vRepo,
-                                      ),
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.play_arrow, size: 17),
-                                label: const Text(
-                                  'INICIAR VIAGEM',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                setState(() {
-                                  _registrarViagemCaminhao = !_registrarViagemCaminhao;
-                                  if (_registrarViagemCaminhao && _kmInicialViagemCtrl.text.trim().isEmpty) {
-                                    _kmInicialViagemCtrl.text =
-                                        '${vehicle.viagemKmInicial ?? vehicle.currentKm}';
-                                  }
-                                });
-                              },
-                              icon: Icon(
-                                isModoViagemCaminhao ? Icons.check_circle : Icons.flag,
-                                size: 17,
-                              ),
-                              label: Text(
-                                isModoViagemCaminhao ? 'FINALIZANDO VIAGEM' : 'FINALIZAR VIAGEM',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    isModoViagemCaminhao ? AppColors.success : AppColors.goldenPollen,
-                                foregroundColor:
-                                    isModoViagemCaminhao ? Colors.white : AppColors.obsidian,
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (isModoViagemCaminhao) ...[
-                        const Divider(height: 22),
-                        const Text(
-                          'Tipo de Implemento (Baú / Caçamba / Outros)',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: _opcoesCarroceria.map((tipo) {
-                            final selecionado = _tipoCarroceria == tipo;
-                            return ChoiceChip(
-                              label: Text(tipo, style: const TextStyle(fontSize: 12)),
-                              selected: selecionado,
-                              selectedColor: AppColors.goldenPollen,
-                              labelStyle: TextStyle(
-                                color: selecionado ? AppColors.obsidian : null,
-                                fontWeight: selecionado ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (_) => setState(() => _tipoCarroceria = tipo),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Número de Eixos',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: _opcoesEixos.map((eixos) {
-                            final selecionado = _numeroEixos == eixos;
-                            return ChoiceChip(
-                              label: Text('$eixos Eixos', style: const TextStyle(fontSize: 12)),
-                              selected: selecionado,
-                              selectedColor: AppColors.goldenPollen,
-                              labelStyle: TextStyle(
-                                color: selecionado ? AppColors.obsidian : null,
-                                fontWeight: selecionado ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              onSelected: (_) => setState(() => _numeroEixos = eixos),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: AppTextField(
-                                controller: _kmInicialViagemCtrl,
-                                label: 'Km Inicial da Viagem',
-                                icon: Icons.play_circle_outline,
-                                keyboardType: TextInputType.number,
-                                validator: (v) {
-                                  if (!isModoViagemCaminhao) return null;
-                                  return Validators.number(v, field: 'Km Inicial');
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: AppTextField(
-                                controller: _pesoCargaCtrl,
-                                label: 'Peso da Carga (Ton)',
-                                hint: 'Ex: 28,5',
-                                icon: Icons.scale,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        AppTextField(
-                          controller: _notaFiscalCteCtrl,
-                          label: 'Nota Fiscal / CT-e (conforme documento)',
-                          hint: 'Ex: NF 45890 / CT-e 1029',
-                          icon: Icons.receipt_long,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // CARD DE ÚLTIMO ODÔMETRO REGISTRADO / KM BASE DA VIAGEM
+              // CARD DE ÚLTIMO ODÔMETRO REGISTRADO
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
@@ -3805,12 +3865,10 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            isModoViagemCaminhao
-                                ? 'Km Inicial da viagem de ${vehicle.name}:'
-                                : 'Último odômetro de ${vehicle.name}:',
+                            'Último odômetro de ${vehicle.name}:',
                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
-                          Text(formatKm(kmBase), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(formatKm(currentVehicleKm), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         ],
                       ),
                     ),
@@ -3829,7 +3887,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                       )
                     else
                       TextButton(
-                        onPressed: () => setState(() => _km.text = '$kmBase'),
+                        onPressed: () => setState(() => _km.text = '$currentVehicleKm'),
                         child: const Text('Usar'),
                       ),
                   ],
@@ -3839,21 +3897,16 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
 
               AppTextField(
                 controller: _km,
-                label: isModoViagemCaminhao ? 'Km Final da Viagem (Odômetro Atual)' : 'Km Atual do Veículo',
+                label: 'Km Atual do Veículo',
                 icon: Icons.speed,
                 keyboardType: TextInputType.number,
-                validator: (v) => Validators.number(
-                  v,
-                  field: isModoViagemCaminhao ? 'Km Final da Viagem' : 'Quilometragem',
-                ),
+                validator: (v) => Validators.number(v, field: 'Quilometragem'),
               ),
-              if (enteredKm <= kmBase && enteredKm > 0 && widget.existing == null)
+              if (enteredKm <= currentVehicleKm && enteredKm > 0 && widget.existing == null)
                 Padding(
                   padding: const EdgeInsets.only(top: 4, left: 4),
                   child: Text(
-                    isModoViagemCaminhao
-                        ? 'Km Inicial da viagem: ${formatKm(kmBase)}. Digite o Km Final maior que o Km Inicial.'
-                        : 'Odômetro registrado: ${formatKm(currentVehicleKm)}. Digite a quilometragem atual.',
+                    'Odômetro registrado: ${formatKm(currentVehicleKm)}. Digite a quilometragem atual.',
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ),
@@ -4040,7 +4093,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
 
               if (showCalc && tripConsumption != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.goldenPollen.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
@@ -4051,84 +4104,33 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                     children: [
                       Row(
                         children: [
-                          Icon(
-                            isModoViagemCaminhao ? Icons.local_shipping : Icons.auto_awesome,
-                            size: 18,
-                            color: AppColors.goldenPollen,
-                          ),
+                          const Icon(Icons.auto_awesome, size: 18, color: AppColors.goldenPollen),
                           const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              isModoViagemCaminhao
-                                  ? 'Log da Viagem e do Caminhão'
-                                  : (isElectricFuel ? 'Resumo da Recarga Elétrica' : 'Resumo do Abastecimento'),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? AppColors.goldenPollen
-                                    : AppColors.obsidian,
-                              ),
+                          Text(
+                            isElectricFuel ? 'Resumo da Recarga Elétrica' : 'Resumo do Abastecimento',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.goldenPollen
+                                  : AppColors.obsidian,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      if (isModoViagemCaminhao) ...[
-                        Text(
-                          '• Tipo: $_tipoCarroceria • $_numeroEixos Eixos',
-                          style: const TextStyle(fontSize: 12.5),
-                        ),
-                        Text(
-                          '• Km Inicial e Km Final: ${formatKm(kmBase)} ➔ ${formatKm(enteredKm)} (${formatKm(diffKm)} rodados)',
-                          style: const TextStyle(fontSize: 12.5),
-                        ),
-                        Text(
-                          '• Litros Abastecidos e Valor Pago: ${formatNumber(enteredVolume, 1)} $unitLabel • ${formatMoney(enteredPrice)}',
-                          style: const TextStyle(fontSize: 12.5),
-                        ),
-                        if (_pesoCargaCtrl.text.trim().isNotEmpty || _notaFiscalCteCtrl.text.trim().isNotEmpty)
-                          Text(
-                            '• Peso da Carga (NF/CT-e): ${_pesoCargaCtrl.text.trim().isNotEmpty ? "${_pesoCargaCtrl.text.trim()} t" : "—"}${_notaFiscalCteCtrl.text.trim().isNotEmpty ? " (${_notaFiscalCteCtrl.text.trim()})" : ""}',
-                            style: const TextStyle(fontSize: 12.5),
-                          ),
-                        const Divider(height: 14),
-                        Text(
-                          '• Resultado 1 (Km/L da viagem): ${formatNumber(tripConsumption, 2)} $consumptionUnitLabel',
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.success,
-                          ),
-                        ),
-                        if (tripCostPerKm != null)
-                          Text(
-                            '• Resultado 2 (Custo de Combustível por Km Rodado): ${formatMoney(tripCostPerKm)}/km',
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.goldenPollen,
-                            ),
-                          ),
-                      ] else ...[
-                        Text(
-                          '• Odômetro anterior: ${formatKm(kmBase)} ➔ Novo: ${formatKm(enteredKm)} (+${formatKm(diffKm)})',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        Text(
-                          '• ${isElectricFuel ? "Eficiência estimada desta recarga" : "Rendimento estimado deste abastecimento"}: ${formatNumber(tripConsumption, 1)} $consumptionUnitLabel',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
-                        if (tripCostPerKm != null)
-                          Text(
-                            '• Custo por Km Rodado: ${formatMoney(tripCostPerKm)}/km',
-                            style: const TextStyle(fontSize: 12.5),
-                          ),
-                      ],
-                      const SizedBox(height: 4),
-                      const Text(
-                        '• Tudo ficará salvo junto no Log do Veículo e da Viagem.',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      const SizedBox(height: 6),
+                      Text(
+                        '• Odômetro anterior: ${formatKm(currentVehicleKm)} ➔ Novo: ${formatKm(enteredKm)} (+${formatKm(diffKm)})',
+                        style: const TextStyle(fontSize: 13),
                       ),
+                      Text(
+                        '• ${isElectricFuel ? "Eficiência estimada desta recarga" : "Rendimento estimado deste abastecimento"}: ${formatNumber(tripConsumption, 1)} $consumptionUnitLabel',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      if (tripCostPerKm != null)
+                        Text(
+                          '• Custo por Km Rodado: ${formatMoney(tripCostPerKm)}/km',
+                          style: const TextStyle(fontSize: 12.5),
+                        ),
                     ],
                   ),
                 ),
@@ -4160,9 +4162,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   Expanded(
                     flex: 2,
                     child: LoadingButton(
-                      label: isModoViagemCaminhao
-                          ? 'Finalizar Viagem e Salvar'
-                          : (isElectricFuel ? 'Salvar Recarga' : 'Salvar Abastecimento'),
+                      label: isElectricFuel ? 'Salvar Recarga' : 'Salvar Abastecimento',
                       loading: _loading,
                       onPressed: _save,
                     ),

@@ -103,6 +103,34 @@ class CartaoVeiculo extends StatelessWidget {
                             ),
                           ),
                         ],
+                        if (veiculo.eCaminhao && veiculo.viagemAtiva) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: CoresApp.sucesso.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: CoresApp.sucesso.withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.play_circle_fill, size: 11, color: CoresApp.sucesso),
+                                SizedBox(width: 3),
+                                Text(
+                                  'EM VIAGEM',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: CoresApp.sucesso,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 2),

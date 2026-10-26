@@ -47,20 +47,21 @@ class RepositorioVeiculo {
   Future<void> iniciarViagemCaminhao({
     required Veiculo veiculo,
     required String tipoCarroceria,
-    required int numeroEixos,
+    int? numeroEixos,
     required int kmInicial,
-    required double pesoCargaTon,
+    double? pesoCargaTon,
     String notaFiscalCte = '',
     String rotaViagem = '',
   }) async {
+    final eixos = numeroEixos ?? veiculo.eixosEfetivos ?? 2;
     final dados = <String, dynamic>{
       'tipoCarroceria': tipoCarroceria.trim(),
-      'numeroEixos': numeroEixos,
+      'numeroEixos': eixos,
       'viagemAtiva': true,
       'viagemKmInicial': kmInicial,
       'viagemTipoCarroceria': tipoCarroceria.trim(),
-      'viagemNumeroEixos': numeroEixos,
-      'viagemPesoCargaTon': pesoCargaTon,
+      'viagemNumeroEixos': eixos,
+      'viagemPesoCargaTon': pesoCargaTon ?? 0.0,
       'viagemNotaFiscalCte': notaFiscalCte.trim(),
       'viagemRota': rotaViagem.trim(),
       'viagemIniciadaEm': Timestamp.now(),
@@ -99,8 +100,9 @@ class RepositorioVeiculo {
   }
 
   /// Cancela uma viagem em andamento sem registrar abastecimento.
-  Future<void> cancelarViagemCaminhao(String idVeiculo) async {
-    await _colecao.doc(idVeiculo).update({
+  Future<void> cancelarViagemCaminhao(dynamic veiculoOuId) async {
+    final id = veiculoOuId is Veiculo ? veiculoOuId.id : veiculoOuId.toString();
+    await _colecao.doc(id).update({
       'viagemAtiva': false,
       'viagemKmInicial': null,
       'viagemPesoCargaTon': null,

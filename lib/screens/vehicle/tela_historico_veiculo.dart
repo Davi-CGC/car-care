@@ -701,7 +701,9 @@ class _TimelineTile extends StatelessWidget {
                       style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                     ),
                     Text(
-                      '${f.isElectric ? 'Carga' : 'Litros Abastecidos'}: ${formatNumber(f.liters, 2)} ${f.unit} • Valor Pago: ${formatMoney(f.totalPrice)} (${formatMoney(f.pricePerLiter)}/${f.unit})',
+                      f.liters > 0
+                          ? '${f.isElectric ? 'Carga' : 'Litros Abastecidos'}: ${formatNumber(f.liters, 2)} ${f.unit} • Valor Pago: ${formatMoney(f.totalPrice)} (${formatMoney(f.pricePerLiter)}/${f.unit})'
+                          : 'Viagem finalizada sem abastecimento',
                       style: const TextStyle(fontSize: 12),
                     ),
                     if (f.possuiDadosViagem) ...[
