@@ -4,6 +4,7 @@ import 'package:carcare/utils/auxiliar_documentos.dart';
 import 'package:carcare/utils/auxiliar_rodizio.dart';
 import 'package:carcare/utils/calculos.dart';
 import 'package:carcare/utils/catalogo_manutencao.dart';
+import 'package:carcare/utils/formatadores.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -231,6 +232,19 @@ void main() {
       expect(viagemCaminhao.resultadoKmPorLitroViagem, closeTo(3.0, 0.001));
       // Resultado 2: Custo de Combustível por Km Rodado = 1200.0 / 600 = R$ 2,00/km
       expect(viagemCaminhao.resultadoCustoPorKmViagem, closeTo(2.0, 0.001));
+    });
+
+    test('Converte valores numéricos e odômetros com separadores de milhar brasileiros', () {
+      // Valores com milhar e vírgula decimal
+      expect(converterNumero('1.250,50'), closeTo(1250.50, 0.01));
+      expect(parseNumber('R\$ 2.400,00'), closeTo(2400.00, 0.01));
+      expect(converterNumero('45,90'), closeTo(45.90, 0.01));
+      expect(converterNumero('45.90'), closeTo(45.90, 0.01));
+
+      // Odômetros com ponto de milhar ou puro
+      expect(converterKm('105.000'), equals(105000));
+      expect(parseKm('105000'), equals(105000));
+      expect(parseKm('105.450 km'), equals(105450));
     });
   });
 }

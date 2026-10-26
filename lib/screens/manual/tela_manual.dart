@@ -35,12 +35,13 @@ class _TelaManualState extends State<TelaManual> {
   static const List<String> _categories = [
     'Todas',
     'Veículos & Rodízio',
+    'Frota & Viagens',
     'Combustível & Consumo',
     'Serviços & Postos',
     'Documentos & Pneus',
     'Manutenções & Alertas',
     'Gastos & Relatórios',
-    'Conta & Nuvem',
+    'Termos & Conta',
   ];
 
   static const List<_FaqItem> _faqList = [
@@ -97,8 +98,50 @@ class _TelaManualState extends State<TelaManual> {
           'Selecione a Marca, Modelo e Ano. O aplicativo busca diretamente na API oficial da FIPE e atualiza o valor '
           'médio de mercado e o código de referência do veículo.',
     ),
+    _FaqItem(
+      category: 'Veículos & Rodízio',
+      icon: Icons.view_list,
+      question: 'Como funciona a seleção de marcas e modelos com modal de 5 opções?',
+      answer:
+          'Para não poluir a tela com menus suspensos compridos, ao clicar no campo de Marca ou Modelo (tanto no cadastro quanto na Tabela FIPE), '
+          'o aplicativo abre um modal moderno com rolagem suave de 5 opções por vez e campo de busca interativo. '
+          'Você pode digitar para filtrar instantaneamente ou rolar até encontrar sua opção.',
+    ),
 
-    // 2. Combustível & Consumo
+    // 2. Frota & Viagens (Caminhões)
+    _FaqItem(
+      category: 'Frota & Viagens',
+      icon: Icons.local_shipping,
+      question: 'Como funciona o Controle de Viagens e Frota para Caminhões?',
+      answer:
+          'Na aba "Veículos", ao clicar sobre o seu caminhão, você visualiza o card "Controle de Frota do Caminhão". '
+          'Toque no botão verde "INICIAR VIAGEM" para registrar o tipo de implemento (Baú, Caçamba, Sider, Graneleiro, etc.), '
+          'o Km Inicial de partida, o peso da carga em toneladas (conforme Nota Fiscal / CT-e) e a Rota/Destino. '
+          'O caminhão entra em status ativo "Viagem em Andamento".',
+    ),
+    _FaqItem(
+      category: 'Frota & Viagens',
+      icon: Icons.auto_awesome,
+      question: 'Como funciona a Finalização Automática de Viagem (sem ter que redigitar tudo)?',
+      answer:
+          'Durante o percurso, o motorista pode abastecer normalmente pelo botão "Abastecer" do app em qualquer posto do caminho. '
+          'Ao chegar ao destino final, basta tocar no caminhão e clicar em "FINALIZAR VIAGEM": o sistema captura e soma '
+          'automaticamente todas as paradas de combustível feitas no trajeto (litros, valores em R\$ e nomes dos postos). '
+          'O motorista só precisa confirmar ou digitar o Odômetro Final de Chegada e tocar em "Confirmar e Finalizar Viagem"! '
+          'O app não exige redigitar o tipo de implemento e faz todos os cálculos na hora.',
+    ),
+    _FaqItem(
+      category: 'Frota & Viagens',
+      icon: Icons.calculate,
+      question: 'Quais resultados de desempenho são calculados ao finalizar a viagem?',
+      answer:
+          'Ao finalizar a viagem, o CarCare gera automaticamente os dois principais indicadores de transporte:\n'
+          '• Resultado 1: Km/L da viagem (distância percorrida dividida pelo total de litros abastecidos no trajeto).\n'
+          '• Resultado 2: Custo de Combustível por Km Rodado (valor total gasto em combustível dividido pelos km rodados, indicando o custo em R\$/km).\n'
+          'Todos esses dados ficam arquivados de forma consolidada no Log/Histórico do caminhão.',
+    ),
+
+    // 3. Combustível & Consumo
     _FaqItem(
       category: 'Combustível & Consumo',
       icon: Icons.speed,
@@ -255,7 +298,16 @@ class _TelaManualState extends State<TelaManual> {
           'O aplicativo monitora o avanço do odômetro e avisa na tela inicial quando o serviço estiver próximo ou atrasado.',
     ),
 
-    // 6. Gastos & Relatórios
+    // 7. Gastos & Relatórios
+    _FaqItem(
+      category: 'Gastos & Relatórios',
+      icon: Icons.filter_alt,
+      question: 'Como alternar entre a visão de todos os veículos e o relatório de um veículo individual?',
+      answer:
+          'Na aba "Relatórios", há um seletor no topo onde você pode escolher "Todos os Veículos" (para ver o comparativo geral e '
+          'gastos de toda a sua frota ou garagem) ou selecionar um veículo individual. Ao escolher um veículo específico, '
+          'todos os gráficos de despesas (semanal, mensal, anual) e os dados de consumo passam a refletir exclusivamente aquele veículo.',
+    ),
     _FaqItem(
       category: 'Gastos & Relatórios',
       icon: Icons.bar_chart,
@@ -271,12 +323,21 @@ class _TelaManualState extends State<TelaManual> {
       question: 'O que é a Média Diária de Distância (km/dia)?',
       answer:
           'É um cálculo que divide os quilômetros rodados pela quantidade de dias entre os registros. '
-          'Essa métrica ajuda a saber o ritmo real de uso do veículo para planejar despesas e próximas trocas de óleo.',
+          'Essa métrica agora fica no Diário de Bordo de cada veículo para monitorar o ritmo real de uso sem poluir a tela principal.',
     ),
 
-    // 7. Conta & Nuvem
+    // 8. Termos & Conta
     _FaqItem(
-      category: 'Conta & Nuvem',
+      category: 'Termos & Conta',
+      icon: Icons.gavel,
+      question: 'Por que é obrigatório aceitar os Termos e Condições da empresa no início do app?',
+      answer:
+          'Para garantir conformidade legal, segurança dos dados e transparência com nossos usuários, o aceite dos Termos de Uso e Política '
+          'de Privacidade da nossa empresa é obrigatório tanto no cadastro quanto no login. Sem marcar a caixinha de aceite, não é permitido '
+          'criar a conta nem entrar no aplicativo. Você pode consultar o texto completo a qualquer momento clicando no link "Termos e Condições".',
+    ),
+    _FaqItem(
+      category: 'Termos & Conta',
       icon: Icons.cloud_done,
       question: 'Meus dados ficam salvos se eu trocar de aparelho?',
       answer:

@@ -23,7 +23,6 @@ class BlocoTermosCondicoes extends StatelessWidget {
     final eEscuro = tema.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: exibirErro
             ? CoresApp.perigo.withValues(alpha: 0.08)
@@ -36,59 +35,69 @@ class BlocoTermosCondicoes extends StatelessWidget {
           width: exibirErro ? 1.5 : 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Checkbox(
-                value: aceitou,
-                activeColor: CoresApp.amareloPolen,
-                checkColor: CoresApp.obsidiana,
-                onChanged: (val) => aoAlterar(val ?? false),
-              ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      const Text(
-                        'Eu li e aceito os ',
-                        style: TextStyle(fontSize: 12.5),
-                      ),
-                      GestureDetector(
-                        onTap: () => exibirModalTermosECondicoes(context),
-                        child: const Text(
-                          'Termos e Condições',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.bold,
-                            color: CoresApp.amareloPolen,
-                            decoration: TextDecoration.underline,
-                          ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => aoAlterar(!aceitou),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Checkbox(
+                      value: aceitou,
+                      activeColor: CoresApp.amareloPolen,
+                      checkColor: CoresApp.obsidian,
+                      onChanged: (val) => aoAlterar(val ?? false),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text(
+                              'Eu li e aceito os ',
+                              style: TextStyle(fontSize: 12.5),
+                            ),
+                            GestureDetector(
+                              onTap: () => exibirModalTermosECondicoes(context),
+                              child: const Text(
+                                'Termos e Condições',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: CoresApp.amareloPolen,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ),
+                            const Text(
+                              ' da nossa empresa.',
+                              style: TextStyle(fontSize: 12.5),
+                            ),
+                          ],
                         ),
                       ),
-                      const Text(
-                        ' da nossa empresa.',
-                        style: TextStyle(fontSize: 12.5),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          if (exibirErro)
-            const Padding(
-              padding: EdgeInsets.only(left: 12, bottom: 6),
-              child: Text(
-                'É obrigatório aceitar os termos e condições para prosseguir.',
-                style: TextStyle(color: CoresApp.perigo, fontSize: 11, fontWeight: FontWeight.bold),
-              ),
+                if (exibirErro)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 12, bottom: 6),
+                    child: Text(
+                      'É obrigatório aceitar os termos e condições para prosseguir.',
+                      style: TextStyle(color: CoresApp.perigo, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ),
+        ),
       ),
     );
   }

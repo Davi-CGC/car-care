@@ -425,7 +425,32 @@ service cloud.firestore {
           <div class="faq-answer">Na aba de Veículos, toque sobre o seu carro, moto ou caminhão e clique em "Consultar" no campo Tabela FIPE. Selecione a Marca, Modelo e Ano. O aplicativo busca diretamente na API oficial da FIPE e atualiza o valor médio de mercado e o código de referência do veículo.</div>
         </details>
 
-        <!-- 2. Combustível & Consumo -->
+        <details class="faq-item">
+          <summary>Como funciona a seleção rápida com modal de 5 opções?</summary>
+          <div class="faq-answer">Ao clicar em campos de seleção como Marcas FIPE, Modelos ou Categorias de Serviço, abre-se um modal flutuante com rolagem suave de 5 opções por vez e campo de busca instantâneo, permitindo encontrar a opção desejada rapidamente sem ocupar toda a tela.</div>
+        </details>
+
+        <!-- 2. Frota & Viagens (Caminhões) -->
+        <div class="faq-category">🚛 Frota &amp; Controle de Viagens (Caminhões)</div>
+
+        <details class="faq-item">
+          <summary>Como funciona o Controle de Viagens e Frota para Caminhões?</summary>
+          <div class="faq-answer">Na aba "Veículos", ao clicar no seu caminhão, você visualiza o card "Controle de Frota do Caminhão". Toque no botão "INICIAR VIAGEM" para registrar o tipo de implemento (Baú, Caçamba, Sider, etc.), o Km Inicial de partida, o peso da carga em toneladas (conforme Nota Fiscal ou CT-e) e a Rota/Destino. O caminhão passa para o status "Viagem em Andamento".</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Como funciona a Finalização Automática de Viagem (sem ter que redigitar tudo)?</summary>
+          <div class="faq-answer">Durante o percurso, o motorista pode abastecer normalmente pelo botão "Abastecer" do app em qualquer posto. Ao chegar ao destino, basta tocar no caminhão e clicar em "FINALIZAR VIAGEM": o sistema captura e soma automaticamente todas as paradas de combustível feitas no trajeto (litros, valores em R$ e nomes dos postos). O motorista só precisa confirmar ou digitar o Odômetro Final de Chegada e tocar em "Confirmar e Finalizar Viagem"! O app não exige redigitar o tipo de implemento e faz todos os cálculos na hora.</div>
+        </details>
+
+        <details class="faq-item">
+          <summary>Quais resultados de desempenho são calculados ao finalizar a viagem?</summary>
+          <div class="faq-answer">Ao finalizar a viagem, o CarCare gera automaticamente dois indicadores estratégicos de transporte:<br>
+• <strong>Resultado 1: Km/L da viagem</strong> (distância total percorrida dividida pelo total de litros abastecidos no trajeto).<br>
+• <strong>Resultado 2: Custo de Combustível por Km Rodado</strong> (valor total gasto em combustível dividido pelos km rodados, indicando o custo em R$/km). Todos esses dados ficam salvos de forma consolidada no Log do caminhão.</div>
+        </details>
+
+        <!-- 3. Combustível & Consumo -->
         <div class="faq-category">⛽ Combustível, Recarga EV &amp; Consumo</div>
 
         <details class="faq-item">
@@ -532,17 +557,27 @@ service cloud.firestore {
         <div class="faq-category">📊 Gastos &amp; Relatórios</div>
 
         <details class="faq-item">
+          <summary>Como alternar entre a visão de todos os veículos e o relatório de um veículo individual?</summary>
+          <div class="faq-answer">Na aba "Relatórios", há um seletor no topo onde você pode escolher "Todos os Veículos" (para ver o comparativo geral e gastos consolidados de toda a sua frota) ou selecionar um veículo individual. Ao escolher um veículo específico, todos os gráficos de despesas (semanal, mensal, anual) e os dados de consumo passam a refletir exclusivamente aquele veículo.</div>
+        </details>
+
+        <details class="faq-item">
           <summary>Como ver os gráficos de gastos por semana, mês e ano?</summary>
           <div class="faq-answer">Na aba "Relatórios", você encontra gráficos de colunas com filtros por Semana, Mês ou Ano, podendo filtrar entre Carros, Motos e Caminhões. Ao tocar em qualquer coluna, o aplicativo abre o detalhamento exato com tudo o que foi gasto no período!</div>
         </details>
 
         <details class="faq-item">
           <summary>O que é a Média Diária de Distância (km/dia)?</summary>
-          <div class="faq-answer">É um cálculo que divide os quilômetros rodados pela quantidade de dias entre os registros. Essa métrica ajuda a saber o ritmo real de uso do veículo para planejar despesas e próximas trocas de óleo.</div>
+          <div class="faq-answer">É um cálculo que divide os quilômetros rodados pela quantidade de dias entre os registros. Essa métrica agora fica organizada no Diário de Bordo de cada veículo para monitorar o ritmo real de uso sem poluir a tela principal.</div>
         </details>
 
-        <!-- 7. Conta & Nuvem -->
-        <div class="faq-category">☁️ Conta &amp; Nuvem</div>
+        <!-- 7. Termos & Conta -->
+        <div class="faq-category">⚖️ Termos &amp; Conta</div>
+
+        <details class="faq-item">
+          <summary>Por que é obrigatório aceitar os Termos e Condições da empresa no início do app?</summary>
+          <div class="faq-answer">Para garantir conformidade legal, segurança dos dados e transparência com nossos usuários, o aceite dos Termos de Uso e Política de Privacidade da nossa empresa é obrigatório tanto no cadastro quanto no login. Sem marcar a caixinha de aceite, não é permitido criar a conta nem entrar no aplicativo. Você pode consultar o texto completo a qualquer momento clicando no link "Termos e Condições".</div>
+        </details>
 
         <details class="faq-item">
           <summary>Meus dados ficam salvos se eu trocar de aparelho?</summary>

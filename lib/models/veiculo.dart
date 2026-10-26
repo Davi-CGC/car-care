@@ -439,7 +439,7 @@ class Veiculo {
       apoliceSeguro: d['apoliceSeguro'] ?? d['insurancePolicy'] ?? '',
       telefoneSeguro: d['telefoneSeguro'] ?? d['insurancePhone'] ?? '',
       dataVencimentoSeguro:
-          ((d['dataVencimentoSeguro'] ?? d['insuranceExpiryDate']) as Timestamp?)?.toDate(),
+          _converterDataSegura(d['dataVencimentoSeguro'] ?? d['insuranceExpiryDate']),
       ultimoRodizioPneusKm: (d['ultimoRodizioPneusKm'] ?? d['lastTireRotationKm'] as num?)?.toInt(),
       intervaloRodizioPneusKm:
           (d['intervaloRodizioPneusKm'] ?? d['tireRotationIntervalKm'] as num?)?.toInt() ?? 10000,
@@ -452,10 +452,19 @@ class Veiculo {
       viagemPesoCargaTon: (d['viagemPesoCargaTon'] as num?)?.toDouble(),
       viagemNotaFiscalCte: (d['viagemNotaFiscalCte'] ?? '').toString(),
       viagemRota: (d['viagemRota'] ?? '').toString(),
-      viagemIniciadaEm: (d['viagemIniciadaEm'] as Timestamp?)?.toDate(),
-      criadoEm: ((d['criadoEm'] ?? d['createdAt']) as Timestamp?)?.toDate(),
+      viagemIniciadaEm: _converterDataSegura(d['viagemIniciadaEm']),
+      criadoEm: _converterDataSegura(d['criadoEm'] ?? d['createdAt']),
     );
   }
+}
+
+DateTime? _converterDataSegura(dynamic v) {
+  if (v == null) return null;
+  if (v is Timestamp) return v.toDate();
+  if (v is DateTime) return v;
+  if (v is String) return DateTime.tryParse(v);
+  if (v is int) return DateTime.fromMillisecondsSinceEpoch(v);
+  return null;
 }
 
 /// Alias para manter compatibilidade com o código existente

@@ -3098,7 +3098,8 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
 
     final detectados = todos.where((f) {
       if (f.vehicleId != c.id) return false;
-      if (f.possuiDadosViagem) return false;
+      // Viagens já concluídas possuem kmInicialViagem salvo
+      if (f.kmInicialViagem != null && f.kmInicialViagem! > 0) return false;
       final porKm = f.km >= kmInicial;
       final porData = dataInicio != null &&
           f.data.isAfter(dataInicio.subtract(const Duration(minutes: 5)));
@@ -3130,7 +3131,7 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
       if (postos.isNotEmpty && _postoCtrl.text.isEmpty) {
         _postoCtrl.text = postos.join(', ');
       }
-      final kmAtualDigitado = int.tryParse(_kmFinalCtrl.text.trim()) ?? kmInicial;
+      final kmAtualDigitado = parseKm(_kmFinalCtrl.text) ?? kmInicial;
       if (kmAtualDigitado <= kmInicial && maiorKm > kmInicial) {
         _kmFinalCtrl.text = '$maiorKm';
       }
@@ -3154,9 +3155,9 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
     try {
       final c = widget.caminhao;
       final kmInicial = c.viagemKmInicial ?? c.currentKm;
-      final kmFinal = int.tryParse(_kmFinalCtrl.text.trim()) ?? kmInicial;
-      final litros = _houveAbastecimento ? (parseNumber(_litrosCtrl.text.trim()) ?? 0.0) : 0.0;
-      final precoTotal = _houveAbastecimento ? (parseNumber(_precoTotalCtrl.text.trim()) ?? 0.0) : 0.0;
+      final kmFinal = parseKm(_kmFinalCtrl.text) ?? kmInicial;
+      final litros = _houveAbastecimento ? (parseNumber(_litrosCtrl.text) ?? 0.0) : 0.0;
+      final precoTotal = _houveAbastecimento ? (parseNumber(_precoTotalCtrl.text) ?? 0.0) : 0.0;
       final posto = _postoCtrl.text.trim();
       final tipoCarroceria = c.viagemTipoCarroceria.isNotEmpty
           ? c.viagemTipoCarroceria
@@ -3218,10 +3219,10 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final c = widget.caminhao;
     final kmInicial = c.viagemKmInicial ?? c.currentKm;
-    final kmFinal = int.tryParse(_kmFinalCtrl.text.trim()) ?? kmInicial;
+    final kmFinal = parseKm(_kmFinalCtrl.text) ?? kmInicial;
     final diffKm = kmFinal - kmInicial;
-    final litros = parseNumber(_litrosCtrl.text.trim()) ?? 0.0;
-    final precoTotal = parseNumber(_precoTotalCtrl.text.trim()) ?? 0.0;
+    final litros = parseNumber(_litrosCtrl.text) ?? 0.0;
+    final precoTotal = parseNumber(_precoTotalCtrl.text) ?? 0.0;
 
     final double? resultado1KmL = (diffKm > 0 && litros > 0) ? (diffKm / litros) : null;
     final double? resultado2CustoKm = (diffKm > 0 && precoTotal > 0) ? (precoTotal / diffKm) : null;
@@ -3386,7 +3387,7 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
                 icon: Icons.speed,
                 keyboardType: TextInputType.number,
                 validator: (v) {
-                  final n = int.tryParse(v?.trim() ?? '');
+                  final n = parseKm(v);
                   if (n == null || n <= 0) return 'Informe o Km Final';
                   if (n < kmInicial) return 'Km Final deve ser maior ou igual a ${formatKm(kmInicial)}';
                   return null;
