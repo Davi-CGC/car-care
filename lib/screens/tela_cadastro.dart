@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/servico_autenticacao.dart';
 import '../utils/dialogos.dart';
 import '../utils/validadores.dart';
+import '../widgets/bloco_termos_condicoes.dart';
 import '../widgets/botao_carregamento.dart';
 import '../widgets/campo_texto_app.dart';
 import '../widgets/logo_app.dart';
@@ -21,6 +22,8 @@ class _TelaCadastroState extends State<TelaCadastro> {
   final _senha = TextEditingController();
   final _confirmarSenha = TextEditingController();
   bool _carregando = false;
+  bool _aceitouTermos = false;
+  bool _tentouEnviarSemTermos = false;
 
   @override
   void dispose() {
@@ -33,6 +36,11 @@ class _TelaCadastroState extends State<TelaCadastro> {
 
   Future<void> _cadastrar() async {
     if (!_chaveFormulario.currentState!.validate()) return;
+    if (!_aceitouTermos) {
+      setState(() => _tentouEnviarSemTermos = true);
+      mostrarMensagem(context, 'Você deve aceitar os Termos e Condições para criar a conta.', erro: true);
+      return;
+    }
     setState(() => _carregando = true);
     try {
       await ServicoAutenticacao().cadastrar(_nome.text, _email.text, _senha.text);
@@ -104,7 +112,16 @@ class _TelaCadastroState extends State<TelaCadastro> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    BlocoTermosCondicoes(
+                      aceitou: _aceitouTermos,
+                      aoAlterar: (v) => setState(() {
+                        _aceitouTermos = v;
+                        if (v) _tentouEnviarSemTermos = false;
+                      }),
+                      exibirErro: _tentouEnviarSemTermos && !_aceitouTermos,
+                    ),
+                    const SizedBox(height: 20),
                     BotaoCarregamento(
                       rotulo: 'Cadastrar',
                       carregando: _carregando,

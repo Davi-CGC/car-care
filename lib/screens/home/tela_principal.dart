@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/alerta_manutencao.dart';
@@ -134,7 +136,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                     index: _currentIndex,
                     children: [
                       _buildOverviewTab(user?.displayName, vehicles, maintenances, fuels, alerts),
-                      _buildVehiclesTab(vehicles, alerts),
+                      _buildVehiclesTab(vehicles, alerts, fuels),
                       _buildMaintenancesTab(vehicles, maintenances),
                       _buildFuelTab(vehicles, fuels),
                       ReportsTab(vehicles: vehicles, maintenances: maintenances, fuels: fuels),
@@ -402,7 +404,11 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
   }
 
   // --- TAB 1: VEÍCULOS ---
-  Widget _buildVehiclesTab(List<Vehicle> vehicles, List<MaintenanceAlert> alerts) {
+  Widget _buildVehiclesTab(
+    List<Vehicle> vehicles,
+    List<MaintenanceAlert> alerts, [
+    List<FuelRecord> fuels = const [],
+  ]) {
     if (vehicles.isEmpty) {
       return EmptyState(
         icon: Icons.directions_car_outlined,
@@ -422,7 +428,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
           return VehicleCard(
             vehicle: v,
             alertCount: count,
-            onTap: () => _showVehicleDetailsModal(context, v),
+            onTap: () => _showVehicleDetailsModal(context, v, fuels),
           );
         }),
       ],
@@ -577,7 +583,11 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
   }
 
   // --- Detalhes do Veículo ---
-  void _showVehicleDetailsModal(BuildContext context, Vehicle vehicle) {
+  void _showVehicleDetailsModal(
+    BuildContext context,
+    Vehicle vehicle, [
+    List<FuelRecord> fuels = const [],
+  ]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -789,7 +799,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                               ),
                               onPressed: () {
                                 Navigator.pop(context);
-                                _showFinalizarViagemDialog(context, vehicle);
+                                _showFinalizarViagemDialog(context, vehicle, fuels);
                               },
                             ),
                             const SizedBox(height: 4),
@@ -1095,7 +1105,11 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
   }
 
   // --- Finalizar Viagem de Caminhão (Controle de Frota) ---
-  void _showFinalizarViagemDialog(BuildContext context, Vehicle caminhao) {
+  void _showFinalizarViagemDialog(
+    BuildContext context,
+    Vehicle caminhao, [
+    List<FuelRecord> fuels = const [],
+  ]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1104,6 +1118,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
         caminhao: caminhao,
         vRepo: _vehicleRepo,
         fRepo: _fuelRepo,
+        initialFuels: fuels,
       ),
     );
   }
@@ -3020,11 +3035,13 @@ class _FinalizarViagemCaminhaoSheet extends StatefulWidget {
   final Vehicle caminhao;
   final VehicleRepository vRepo;
   final FuelRepository fRepo;
+  final List<FuelRecord> initialFuels;
 
   const _FinalizarViagemCaminhaoSheet({
     required this.caminhao,
     required this.vRepo,
     required this.fRepo,
+    this.initialFuels = const [],
   });
 
   @override
@@ -3044,6 +3061,13 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
   DateTime _data = DateTime.now();
   bool _salvando = false;
 
+  StreamSubscription<List<FuelRecord>>? _sub;
+  List<FuelRecord> _abastecimentosDetectados = [];
+  double _totalLitrosDetectados = 0.0;
+  double _totalValorDetectado = 0.0;
+  int _maiorKmDetectado = 0;
+  bool _detectouAutomatico = false;
+
   @override
   void initState() {
     super.initState();
@@ -3055,10 +3079,67 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
 
     final allowed = FuelTypes.forVehicle(c);
     _tipoCombustivel = allowed.contains(FuelTypes.diesel) ? FuelTypes.diesel : allowed.first;
+
+    if (widget.initialFuels.isNotEmpty) {
+      _processarAbastecimentos(widget.initialFuels);
+    }
+
+    _sub = widget.fRepo.observarPorVeiculo(c.id).listen((lista) {
+      if (mounted) {
+        _processarAbastecimentos(lista);
+      }
+    });
+  }
+
+  void _processarAbastecimentos(List<FuelRecord> todos) {
+    final c = widget.caminhao;
+    final kmInicial = c.viagemKmInicial ?? c.currentKm;
+    final dataInicio = c.viagemIniciadaEm;
+
+    final detectados = todos.where((f) {
+      if (f.vehicleId != c.id) return false;
+      if (f.possuiDadosViagem) return false;
+      final porKm = f.km >= kmInicial;
+      final porData = dataInicio != null &&
+          f.data.isAfter(dataInicio.subtract(const Duration(minutes: 5)));
+      return porKm || porData;
+    }).toList()
+      ..sort((a, b) => a.data.compareTo(b.data));
+
+    if (detectados.isEmpty) return;
+
+    final litros = detectados.fold<double>(0.0, (acc, f) => acc + f.liters);
+    final valor = detectados.fold<double>(0.0, (acc, f) => acc + f.totalPrice);
+    final maiorKm = detectados.fold<int>(kmInicial, (max, f) => f.km > max ? f.km : max);
+    final postos = detectados
+        .map((f) => f.gasStation.trim())
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .toList();
+
+    setState(() {
+      _abastecimentosDetectados = detectados;
+      _totalLitrosDetectados = litros;
+      _totalValorDetectado = valor;
+      _maiorKmDetectado = maiorKm;
+      _detectouAutomatico = true;
+      _houveAbastecimento = true;
+
+      _litrosCtrl.text = formatNumber(litros, 2);
+      _precoTotalCtrl.text = formatNumber(valor, 2);
+      if (postos.isNotEmpty && _postoCtrl.text.isEmpty) {
+        _postoCtrl.text = postos.join(', ');
+      }
+      final kmAtualDigitado = int.tryParse(_kmFinalCtrl.text.trim()) ?? kmInicial;
+      if (kmAtualDigitado <= kmInicial && maiorKm > kmInicial) {
+        _kmFinalCtrl.text = '$maiorKm';
+      }
+    });
   }
 
   @override
   void dispose() {
+    _sub?.cancel();
     _kmFinalCtrl.dispose();
     _litrosCtrl.dispose();
     _precoTotalCtrl.dispose();
@@ -3089,7 +3170,7 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
         numeroEixos: c.viagemNumeroEixos ?? c.eixosEfetivos,
       );
 
-      // 2. Registra o histórico da viagem no log
+      // 2. Registra o histórico consolidado da viagem no log
       final registroViagem = FuelRecord(
         vehicleId: c.id,
         date: _data,
@@ -3109,11 +3190,20 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
 
       await widget.fRepo.add(registroViagem);
 
+      // 3. Remove os abastecimentos intermediários que foram consolidados nesta viagem única
+      for (final ant in _abastecimentosDetectados) {
+        if (ant.id.isNotEmpty) {
+          try {
+            await widget.fRepo.delete(ant.id);
+          } catch (_) {}
+        }
+      }
+
       if (mounted) {
         Navigator.pop(context);
         showMessage(
           context,
-          'Viagem do ${c.name} finalizada com sucesso! Todos os dados foram salvos no Log.',
+          'Viagem do ${c.name} finalizada com sucesso! Todos os dados e consumos foram consolidados no Log.',
         );
       }
     } catch (e) {
@@ -3219,6 +3309,77 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
               ),
               const SizedBox(height: 14),
 
+              // BLOCO INTELIGENTE: ABASTECIMENTOS CAPTURADOS AUTOMATICAMENTE
+              if (_detectouAutomatico && _abastecimentosDetectados.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldenPollen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.goldenPollen.withValues(alpha: 0.5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_awesome, color: AppColors.goldenPollen, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${_abastecimentosDetectados.length} Abastecimento(s) detectado(s) durante a viagem!',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'O sistema pegou todas as vezes que você abasteceu, somou os litros e valores automaticamente. Você só precisa confirmar ou ajustar o Odômetro Final de Chegada!',
+                        style: TextStyle(fontSize: 11.5, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 8),
+                      ..._abastecimentosDetectados.map((a) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.local_gas_station, size: 14, color: AppColors.goldenPollen),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '${a.gasStation.isNotEmpty ? a.gasStation : "Posto"}: ${formatNumber(a.liters, 2)} L • ${formatMoney(a.totalPrice)} (Km ${formatKm(a.km)})',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                      const Divider(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total acumulado: ${formatNumber(_totalLitrosDetectados, 2)} L',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          Text(
+                            formatMoney(_totalValorDetectado),
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.goldenPollen, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      if (_maiorKmDetectado > 0) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '• Último odômetro registrado nas paradas: ${formatKm(_maiorKmDetectado)}',
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
               AppTextField(
                 controller: _kmFinalCtrl,
                 label: 'Km Final da Viagem (Odômetro de Chegada)',
@@ -3255,9 +3416,11 @@ class _FinalizarViagemCaminhaoSheetState extends State<_FinalizarViagemCaminhaoS
                     'Houve abastecimento de combustível nesta viagem?',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                   ),
-                  subtitle: const Text(
-                    'Opcional. Se abasteceu, informe litros e valor para calcular o Km/L e o custo por Km.',
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  subtitle: Text(
+                    _detectouAutomatico
+                        ? 'Abastecimentos identificados automaticamente. Toque se desejar alterar.'
+                        : 'Opcional. Se abasteceu, informe litros e valor para calcular o Km/L e o custo por Km.',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   onChanged: (val) => setState(() => _houveAbastecimento = val),
                 ),

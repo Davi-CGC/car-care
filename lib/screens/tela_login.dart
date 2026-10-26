@@ -5,6 +5,7 @@ import '../theme/cores_app.dart';
 import '../utils/constantes.dart';
 import '../utils/dialogos.dart';
 import '../utils/validadores.dart';
+import '../widgets/bloco_termos_condicoes.dart';
 import '../widgets/botao_carregamento.dart';
 import '../widgets/campo_texto_app.dart';
 import '../widgets/logo_app.dart';
@@ -23,6 +24,8 @@ class _TelaLoginState extends State<TelaLogin> {
   final _senha = TextEditingController();
   final _servicoAutenticacao = ServicoAutenticacao();
   bool _carregando = false;
+  bool _aceitouTermos = false;
+  bool _tentouEntrarSemTermos = false;
   String? _erro;
 
   @override
@@ -35,6 +38,13 @@ class _TelaLoginState extends State<TelaLogin> {
   Future<void> _entrar() async {
     setState(() => _erro = null);
     if (!_chaveFormulario.currentState!.validate()) return;
+    if (!_aceitouTermos) {
+      setState(() {
+        _tentouEntrarSemTermos = true;
+        _erro = 'Você deve aceitar os Termos e Condições para entrar no aplicativo.';
+      });
+      return;
+    }
     setState(() => _carregando = true);
     try {
       await _servicoAutenticacao.entrar(_email.text, _senha.text);
@@ -109,6 +119,18 @@ class _TelaLoginState extends State<TelaLogin> {
                         child: const Text('Esqueci minha senha'),
                       ),
                     ),
+                    BlocoTermosCondicoes(
+                      aceitou: _aceitouTermos,
+                      aoAlterar: (v) => setState(() {
+                        _aceitouTermos = v;
+                        if (v) {
+                          _tentouEntrarSemTermos = false;
+                          _erro = null;
+                        }
+                      }),
+                      exibirErro: _tentouEntrarSemTermos && !_aceitouTermos,
+                    ),
+                    const SizedBox(height: 16),
                     if (_erro != null)
                       Container(
                         margin: const EdgeInsets.only(bottom: 12),

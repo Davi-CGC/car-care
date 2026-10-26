@@ -13,6 +13,7 @@ class CoresApp {
 
   /// Obsidian Black Metallic — fundo do tema escuro e textos no tema claro.
   static const Color obsidian = Color(0xFF121214);
+  static const Color obsidiana = obsidian;
 
   /// Variação um pouco mais clara do obsidian, usada em cards no tema escuro.
   static const Color obsidianClaro = Color(0xFF1F1F23);
