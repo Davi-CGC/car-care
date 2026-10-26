@@ -48,6 +48,64 @@ class ServicoPostosProximos {
 
   static String? get cidadeDetectada => _cidadeDetectada;
 
+  static const List<String> _palavrasProibidasPosto = [
+    'policial',
+    'polícia',
+    'policia',
+    'militar',
+    'guarda',
+    'delegacia',
+    'prf',
+    'bprv',
+    'pm ',
+    ' pm',
+    'saúde',
+    'saude',
+    'médico',
+    'medico',
+    'clínic',
+    'clinic',
+    'hospital',
+    'ubs',
+    'psf',
+    'upas',
+    'upa ',
+    'fiscal',
+    'receita',
+    'alfândega',
+    'alfandega',
+    'pedágio',
+    'pedagio',
+    'pesagem',
+    'balança',
+    'balanca',
+    'bombeiro',
+    'salva-vidas',
+    'guarda-vidas',
+    'atendimento',
+    'bancário',
+    'bancario',
+    'correio',
+    'detran',
+    'vistoria',
+    'inss',
+    'eleitoral',
+    'fronteira',
+    'rodoviário estadual',
+    'rodoviario estadual',
+    'polícia rodoviária',
+    'policia rodoviaria',
+  ];
+
+  static bool _ehNomeDePostoInvalido(String nome) {
+    final n = nome.trim().toLowerCase();
+    if (n.isEmpty) return true;
+    for (final proibida in _palavrasProibidasPosto) {
+      if (n.contains(proibida)) return true;
+    }
+    return false;
+  }
+
   /// Retorna uma lista de postos reais próximos à localização atual do usuário,
   /// filtrados de acordo com o combustível/energia selecionado.
   Future<List<PostoProximo>> buscarPostosProximos({
@@ -60,7 +118,7 @@ class ServicoPostosProximos {
     final isGnv = !isEv && combNorm.contains('gnv');
     final isDiesel = !isEv && combNorm.contains('diesel');
 
-    final chaveCache = isEv ? 'ev' : (isGnv ? 'gnv' : (isDiesel ? 'diesel' : 'combustivel'));
+    final chaveCache = 'v2_${isEv ? 'ev' : (isGnv ? 'gnv' : (isDiesel ? 'diesel' : 'combustivel'))}';
     if (!forcarAtualizacao &&
         _cachePorTipo[chaveCache] != null &&
         _cachePorTipo[chaveCache]!.isNotEmpty) {
@@ -160,7 +218,7 @@ class ServicoPostosProximos {
           if (nomeFinal.isEmpty && street.isNotEmpty) {
             nomeFinal = eletrico ? 'Eletroposto - $street' : 'Posto - $street';
           }
-          if (nomeFinal.isEmpty) continue;
+          if (nomeFinal.isEmpty || _ehNomeDePostoInvalido(nomeFinal)) continue;
 
           if (eletrico) {
             if (!nomeFinal.toLowerCase().contains('eletro') &&
@@ -244,62 +302,86 @@ class ServicoPostosProximos {
     required bool diesel,
   }) async {
     try {
-      final termo = eletrico
-          ? 'eletroposto'
-          : (gnv ? 'posto gnv' : (diesel ? 'posto diesel' : 'posto'));
-      final uri = Uri.parse(
-        'https://photon.komoot.io/api/?q=${Uri.encodeComponent(termo)}&lat=$lat&lon=$lon&limit=20',
-      );
-      final resp = await http.get(uri).timeout(const Duration(seconds: 4));
-      if (resp.statusCode != 200) return const [];
+      final amenityTag = eletrico ? 'charging_station' : 'fuel';
+      final termos = eletrico
+          ? ['eletroposto', 'charging', 'posto']
+          : (gnv
+              ? ['posto gnv', 'auto posto', 'posto shell', 'posto ipiranga', 'posto petrobras']
+              : (diesel
+                  ? ['posto diesel', 'auto posto', 'posto shell', 'posto ipiranga', 'posto petrobras']
+                  : ['auto posto', 'posto shell', 'posto ipiranga', 'posto petrobras', 'posto']));
 
-      final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      final features = (data['features'] as List?) ?? const [];
       final resultados = <PostoProximo>[];
       final nomesVistos = <String>{};
 
-      for (final f in features) {
-        if (f is! Map<String, dynamic>) continue;
-        final props = (f['properties'] as Map<String, dynamic>?) ?? const {};
-        final geom = (f['geometry'] as Map<String, dynamic>?) ?? const {};
-        final coords = (geom['coordinates'] as List?) ?? const [];
+      for (final termo in termos) {
+        final uri = Uri.parse(
+          'https://photon.komoot.io/api/?q=${Uri.encodeComponent(termo)}&lat=$lat&lon=$lon&osm_tag=amenity:$amenityTag&limit=25',
+        );
+        final resp = await http.get(uri).timeout(const Duration(seconds: 4));
+        if (resp.statusCode != 200) continue;
 
-        final rawName = (props['name'] ?? '').toString().trim();
-        if (rawName.isEmpty) continue;
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final features = (data['features'] as List?) ?? const [];
 
-        final street =
-            (props['street'] ?? props['district'] ?? props['city'] ?? '').toString().trim();
+        for (final f in features) {
+          if (f is! Map<String, dynamic>) continue;
+          final props = (f['properties'] as Map<String, dynamic>?) ?? const {};
+          final geom = (f['geometry'] as Map<String, dynamic>?) ?? const {};
+          final coords = (geom['coordinates'] as List?) ?? const [];
 
-        double distKm = 0;
-        if (coords.length >= 2) {
-          final fLon = (coords[0] as num?)?.toDouble();
-          final fLat = (coords[1] as num?)?.toDouble();
-          if (fLat != null && fLon != null) {
-            distKm = _calcularDistanciaKm(lat, lon, fLat, fLon);
+          final osmKey = (props['osm_key'] ?? '').toString().toLowerCase();
+          final osmValue = (props['osm_value'] ?? '').toString().toLowerCase();
+          // Garante que apenas postos de combustível (fuel) ou eletropostos (charging_station) entrem na lista
+          if (osmKey.isNotEmpty && osmValue.isNotEmpty) {
+            if (eletrico && osmValue != 'charging_station' && osmValue != 'fuel') continue;
+            if (!eletrico && osmValue != 'fuel') continue;
+          }
+
+          final rawName = (props['name'] ?? '').toString().trim();
+          if (rawName.isEmpty || _ehNomeDePostoInvalido(rawName)) continue;
+
+          final street =
+              (props['street'] ?? props['district'] ?? props['city'] ?? '').toString().trim();
+
+          double distKm = 0;
+          if (coords.length >= 2) {
+            final fLon = (coords[0] as num?)?.toDouble();
+            final fLat = (coords[1] as num?)?.toDouble();
+            if (fLat != null && fLon != null) {
+              distKm = _calcularDistanciaKm(lat, lon, fLat, fLon);
+            }
+          }
+          // Ignora resultados muito distantes (> 50 km)
+          if (distKm > 50) continue;
+
+          String nomeFinal = rawName;
+          if (eletrico && !nomeFinal.toLowerCase().contains('eletro')) {
+            nomeFinal = 'Eletroposto $nomeFinal';
+          } else if (!eletrico && !nomeFinal.toLowerCase().contains('posto')) {
+            nomeFinal = 'Posto $nomeFinal';
+          }
+
+          if (_ehNomeDePostoInvalido(nomeFinal)) continue;
+
+          final chave = '${nomeFinal.toLowerCase()}|${street.toLowerCase()}';
+          if (nomesVistos.add(chave)) {
+            resultados.add(
+              PostoProximo(
+                nome: nomeFinal,
+                endereco: street,
+                distanciaKm: distKm,
+                eEletroposto: eletrico,
+                destaqueCombustivel: eletrico
+                    ? 'Recarga Elétrica (kWh)'
+                    : (gnv
+                        ? 'Posto Próximo'
+                        : (diesel ? 'Posto Próximo (Diesel)' : 'Posto de Combustível')),
+              ),
+            );
           }
         }
-        // Ignora resultados muito distantes (> 50 km)
-        if (distKm > 50) continue;
-
-        String nomeFinal = rawName;
-        if (eletrico && !nomeFinal.toLowerCase().contains('eletro')) {
-          nomeFinal = 'Eletroposto $nomeFinal';
-        } else if (!eletrico && !nomeFinal.toLowerCase().contains('posto')) {
-          nomeFinal = 'Posto $nomeFinal';
-        }
-
-        final chave = '${nomeFinal.toLowerCase()}|${street.toLowerCase()}';
-        if (nomesVistos.add(chave)) {
-          resultados.add(
-            PostoProximo(
-              nome: nomeFinal,
-              endereco: street,
-              distanciaKm: distKm,
-              eEletroposto: eletrico,
-              destaqueCombustivel: eletrico ? 'Recarga Elétrica (kWh)' : '',
-            ),
-          );
-        }
+        if (resultados.length >= 10) break;
       }
 
       resultados.sort((a, b) => a.distanciaKm.compareTo(b.distanciaKm));

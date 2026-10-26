@@ -86,6 +86,18 @@ class Veiculo {
   final int? ultimoRodizioPneusKm;
   final int intervaloRodizioPneusKm;
 
+  // Configuração de Caminhão / Frota e Controle de Viagem Ativa
+  final String tipoCarroceria; // Ex: 'Baú', 'Caçamba', 'Sider', 'Graneleiro', 'Prancha', 'Tanque'
+  final int? numeroEixos; // Ex: 2, 3, 4, 5, 6, 7, 9
+  final bool viagemAtiva;
+  final int? viagemKmInicial;
+  final String viagemTipoCarroceria;
+  final int? viagemNumeroEixos;
+  final double? viagemPesoCargaTon;
+  final String viagemNotaFiscalCte;
+  final String viagemRota;
+  final DateTime? viagemIniciadaEm;
+
   final DateTime criadoEm;
 
   Veiculo({
@@ -134,6 +146,16 @@ class Veiculo {
     int? lastTireRotationKm,
     int? intervaloRodizioPneusKm,
     int? tireRotationIntervalKm,
+    this.tipoCarroceria = '',
+    this.numeroEixos,
+    this.viagemAtiva = false,
+    this.viagemKmInicial,
+    this.viagemTipoCarroceria = '',
+    this.viagemNumeroEixos,
+    this.viagemPesoCargaTon,
+    this.viagemNotaFiscalCte = '',
+    this.viagemRota = '',
+    this.viagemIniciadaEm,
     DateTime? criadoEm,
     DateTime? createdAt,
   })  : tipo = tipo ?? type ?? TipoVeiculo.carro,
@@ -324,6 +346,19 @@ class Veiculo {
 
   double get effectiveTankCapacity => capacidadeEfetivaTanque;
 
+  String get carroceriaEfetiva =>
+      viagemTipoCarroceria.trim().isNotEmpty ? viagemTipoCarroceria.trim() : tipoCarroceria.trim();
+
+  int? get eixosEfetivos => viagemNumeroEixos ?? numeroEixos;
+
+  String get resumoImplementoCaminhao {
+    if (!eCaminhao) return '';
+    final partes = <String>[];
+    if (carroceriaEfetiva.isNotEmpty) partes.add(carroceriaEfetiva);
+    if (eixosEfetivos != null && eixosEfetivos! > 0) partes.add('${eixosEfetivos!} Eixos');
+    return partes.join(' • ');
+  }
+
   Map<String, dynamic> toMap() => {
         'type': tipo.name,
         'propulsion': propulsao.name,
@@ -351,6 +386,8 @@ class Veiculo {
             : null,
         'lastTireRotationKm': ultimoRodizioPneusKm,
         'tireRotationIntervalKm': intervaloRodizioPneusKm,
+        if (tipoCarroceria.trim().isNotEmpty) 'tipoCarroceria': tipoCarroceria.trim(),
+        if (numeroEixos != null) 'numeroEixos': numeroEixos,
         'createdAt': Timestamp.fromDate(criadoEm),
       };
 
@@ -406,6 +443,16 @@ class Veiculo {
       ultimoRodizioPneusKm: (d['ultimoRodizioPneusKm'] ?? d['lastTireRotationKm'] as num?)?.toInt(),
       intervaloRodizioPneusKm:
           (d['intervaloRodizioPneusKm'] ?? d['tireRotationIntervalKm'] as num?)?.toInt() ?? 10000,
+      tipoCarroceria: (d['tipoCarroceria'] ?? '').toString(),
+      numeroEixos: (d['numeroEixos'] as num?)?.toInt(),
+      viagemAtiva: d['viagemAtiva'] == true,
+      viagemKmInicial: (d['viagemKmInicial'] as num?)?.toInt(),
+      viagemTipoCarroceria: (d['viagemTipoCarroceria'] ?? '').toString(),
+      viagemNumeroEixos: (d['viagemNumeroEixos'] as num?)?.toInt(),
+      viagemPesoCargaTon: (d['viagemPesoCargaTon'] as num?)?.toDouble(),
+      viagemNotaFiscalCte: (d['viagemNotaFiscalCte'] ?? '').toString(),
+      viagemRota: (d['viagemRota'] ?? '').toString(),
+      viagemIniciadaEm: (d['viagemIniciadaEm'] as Timestamp?)?.toDate(),
       criadoEm: ((d['criadoEm'] ?? d['createdAt']) as Timestamp?)?.toDate(),
     );
   }

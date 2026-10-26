@@ -178,7 +178,7 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                                         style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                                       ),
                                       Text(
-                                        'Odômetro Atual: ${formatKm(v.currentKm)}',
+                                        'Odômetro Atual: ${formatKm(v.currentKm)}${v.resumoImplementoCaminhao.isNotEmpty ? " • ${v.resumoImplementoCaminhao}" : ""}',
                                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                                       ),
                                     ],
@@ -186,6 +186,50 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                                 ),
                               ],
                             ),
+                            if (v.isTruck && v.viagemAtiva) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.success.withValues(alpha: 0.45)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.local_shipping, color: AppColors.success, size: 18),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'VIAGEM EM ANDAMENTO • ${v.resumoImplementoCaminhao.isNotEmpty ? v.resumoImplementoCaminhao : "Caminhão"}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                              color: AppColors.success,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '• Km Inicial: ${formatKm(v.viagemKmInicial ?? v.currentKm)}'
+                                      '${v.viagemPesoCargaTon != null && v.viagemPesoCargaTon! > 0 ? " • Peso da Carga: ${formatNumber(v.viagemPesoCargaTon!, 1)} t" : ""}'
+                                      '${v.viagemNotaFiscalCte.isNotEmpty ? " (NF/CT-e: ${v.viagemNotaFiscalCte})" : ""}',
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                    if (v.viagemRota.isNotEmpty)
+                                      Text(
+                                        '• Rota: ${v.viagemRota}',
+                                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             const Divider(height: 20),
                             // Alerta de Rodízio
                             Row(
@@ -284,28 +328,113 @@ class _TelaHistoricoVeiculoState extends State<TelaHistoricoVeiculo> {
                       builder: (_) {
                         final lastFuel = vehicleFuels.isNotEmpty ? vehicleFuels.first : null;
                         final consUnit = lastFuel?.consumptionUnit ?? v.defaultConsumptionUnit;
-                        return Row(
+                        final viagens = vehicleFuels.where((f) => f.possuiDadosViagem).toList();
+                        final totalKmViagens =
+                            viagens.fold<int>(0, (acc, f) => acc + f.kmRodadosViagem);
+                        final totalLitrosViagens =
+                            viagens.fold<double>(0.0, (acc, f) => acc + f.litros);
+                        final totalValorViagens =
+                            viagens.fold<double>(0.0, (acc, f) => acc + f.precoTotal);
+                        final mediaKmLViagens =
+                            (totalKmViagens > 0 && totalLitrosViagens > 0)
+                                ? totalKmViagens / totalLitrosViagens
+                                : null;
+                        final custoPorKmViagens =
+                            (totalKmViagens > 0 && totalValorViagens > 0)
+                                ? totalValorViagens / totalKmViagens
+                                : null;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Expanded(
-                              child: _StatMiniCard(
-                                label: 'Consumo médio',
-                                value: avgConsumption != null
-                                    ? '${formatNumber(avgConsumption, 1)} $consUnit'
-                                    : '--',
-                                icon: v.isElectric ? Icons.ev_station : Icons.local_gas_station,
-                                color: AppColors.goldenPollen,
-                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _StatMiniCard(
+                                    label: 'Consumo médio',
+                                    value: avgConsumption != null
+                                        ? '${formatNumber(avgConsumption, 1)} $consUnit'
+                                        : '--',
+                                    icon: v.isElectric ? Icons.ev_station : Icons.local_gas_station,
+                                    color: AppColors.goldenPollen,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _StatMiniCard(
+                                    label: 'Média diária',
+                                    value: dailyKm > 0
+                                        ? '${formatNumber(dailyKm, 1)} km/dia'
+                                        : '--',
+                                    icon: Icons.route,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _StatMiniCard(
-                                label: 'Média diária',
-                                value: dailyKm > 0
-                                    ? '${formatNumber(dailyKm, 1)} km/dia'
-                                    : '--',
-                                icon: Icons.route,
+                            if (v.isTruck || viagens.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Card(
+                                elevation: 0,
+                                color: AppColors.goldenPollen.withValues(alpha: 0.1),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: BorderSide(color: AppColors.goldenPollen.withValues(alpha: 0.4)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.local_shipping, color: AppColors.goldenPollen, size: 20),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Resumo de Viagens e Frota • ${v.name}',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
+                                          ),
+                                          Text(
+                                            '${viagens.length} ${viagens.length == 1 ? "viagem" : "viagens"}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.goldenPollen,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              'Resultado 1 (Média Viagens):\n${mediaKmLViagens != null ? "${formatNumber(mediaKmLViagens, 2)} $consUnit" : "--"}',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              'Resultado 2 (Custo/Km Rodado):\n${custoPorKmViagens != null ? "${formatMoney(custoPorKmViagens)}/km" : "--"}',
+                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (totalKmViagens > 0) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Total rodado em viagens registradas: ${formatKm(totalKmViagens)} • Combustível nas viagens: ${formatMoney(totalValorViagens)}',
+                                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         );
                       },
@@ -516,8 +645,17 @@ class _TimelineTile extends StatelessWidget {
 
     if (entry.isFuel && entry.fuel != null) {
       final f = entry.fuel!;
+      final resKmL = f.resultadoKmPorLitroViagem;
+      final resCustoKm = f.resultadoCustoPorKmViagem;
+      final kmRodados = f.kmRodadosViagem;
       return Card(
         margin: const EdgeInsets.only(bottom: 10),
+        shape: f.possuiDadosViagem
+            ? RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: AppColors.goldenPollen.withValues(alpha: 0.45)),
+              )
+            : null,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -527,7 +665,9 @@ class _TimelineTile extends StatelessWidget {
                 backgroundColor: (f.isElectric ? Colors.green : AppColors.goldenPollen)
                     .withValues(alpha: 0.15),
                 child: Icon(
-                  f.isElectric ? Icons.ev_station : Icons.local_gas_station,
+                  f.possuiDadosViagem
+                      ? Icons.local_shipping
+                      : (f.isElectric ? Icons.ev_station : Icons.local_gas_station),
                   color: f.isElectric ? Colors.green[600] : AppColors.goldenPollen,
                   size: 20,
                 ),
@@ -541,9 +681,11 @@ class _TimelineTile extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            f.isElectric
-                                ? 'Recarga Elétrica • ${f.fuelType}'
-                                : 'Abastecimento • ${f.fuelType}',
+                            f.possuiDadosViagem
+                                ? 'Viagem & Abastecimento${f.resumoImplementoViagem.isNotEmpty ? " • ${f.resumoImplementoViagem}" : ""}'
+                                : (f.isElectric
+                                    ? 'Recarga Elétrica • ${f.fuelType}'
+                                    : 'Abastecimento • ${f.fuelType}'),
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                         ),
@@ -555,13 +697,44 @@ class _TimelineTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${formatDate(f.date)} • Odômetro: ${formatKm(f.km)}',
+                      '${formatDate(f.date)} • ${f.kmInicialViagem != null ? "Km Inicial: ${formatKm(f.kmInicialViagem!)} ➔ Km Final: ${formatKm(f.km)} (${formatKm(kmRodados)} rodados)" : "Odômetro: ${formatKm(f.km)}"}',
                       style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
                     ),
                     Text(
-                      '${f.isElectric ? 'Carga' : 'Volume'}: ${formatNumber(f.liters, 2)} ${f.unit} • ${formatMoney(f.pricePerLiter)}/${f.unit}',
+                      '${f.isElectric ? 'Carga' : 'Litros Abastecidos'}: ${formatNumber(f.liters, 2)} ${f.unit} • Valor Pago: ${formatMoney(f.totalPrice)} (${formatMoney(f.pricePerLiter)}/${f.unit})',
                       style: const TextStyle(fontSize: 12),
                     ),
+                    if (f.possuiDadosViagem) ...[
+                      const SizedBox(height: 6),
+                      if (f.resumoImplementoViagem.isNotEmpty)
+                        Text(
+                          '• Tipo: ${f.resumoImplementoViagem}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      if (f.pesoCargaTon != null && f.pesoCargaTon! > 0)
+                        Text(
+                          '• Peso da Carga (NF/CT-e): ${formatNumber(f.pesoCargaTon!, 1)} t${f.notaFiscalCte.isNotEmpty ? " • Doc: ${f.notaFiscalCte}" : ""}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      if (resKmL != null)
+                        Text(
+                          '• Resultado 1 (Média da Viagem): ${formatNumber(resKmL, 2)} ${f.consumptionUnit}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      if (resCustoKm != null)
+                        Text(
+                          '• Resultado 2 (Custo de Combustível por Km Rodado): ${formatMoney(resCustoKm)}/km (${formatMoney(f.totalPrice)} ÷ ${formatKm(kmRodados)})',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.goldenPollen,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),

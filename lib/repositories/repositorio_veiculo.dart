@@ -43,6 +43,73 @@ class RepositorioVeiculo {
       _colecao.doc(id).update({'currentKm': km});
   Future<void> setKm(String id, int km) => definirKm(id, km);
 
+  /// Inicia uma viagem no caminhão salvando tipo (Baú/Caçamba), eixos, Km inicial e peso da carga (NF/CT-e).
+  Future<void> iniciarViagemCaminhao({
+    required Veiculo veiculo,
+    required String tipoCarroceria,
+    required int numeroEixos,
+    required int kmInicial,
+    required double pesoCargaTon,
+    String notaFiscalCte = '',
+    String rotaViagem = '',
+  }) async {
+    final dados = <String, dynamic>{
+      'tipoCarroceria': tipoCarroceria.trim(),
+      'numeroEixos': numeroEixos,
+      'viagemAtiva': true,
+      'viagemKmInicial': kmInicial,
+      'viagemTipoCarroceria': tipoCarroceria.trim(),
+      'viagemNumeroEixos': numeroEixos,
+      'viagemPesoCargaTon': pesoCargaTon,
+      'viagemNotaFiscalCte': notaFiscalCte.trim(),
+      'viagemRota': rotaViagem.trim(),
+      'viagemIniciadaEm': Timestamp.now(),
+    };
+    if (kmInicial > veiculo.kmAtual) {
+      dados['currentKm'] = kmInicial;
+    }
+    await _colecao.doc(veiculo.id).update(dados);
+  }
+
+  /// Finaliza a viagem ativa do caminhão e atualiza a quilometragem final.
+  Future<void> finalizarViagemCaminhao({
+    required Veiculo veiculo,
+    required int kmFinal,
+    String? tipoCarroceria,
+    int? numeroEixos,
+  }) async {
+    final dados = <String, dynamic>{
+      'viagemAtiva': false,
+      'viagemKmInicial': null,
+      'viagemPesoCargaTon': null,
+      'viagemNotaFiscalCte': '',
+      'viagemRota': '',
+      'viagemIniciadaEm': null,
+    };
+    if (kmFinal > veiculo.kmAtual) {
+      dados['currentKm'] = kmFinal;
+    }
+    if (tipoCarroceria != null && tipoCarroceria.trim().isNotEmpty) {
+      dados['tipoCarroceria'] = tipoCarroceria.trim();
+    }
+    if (numeroEixos != null && numeroEixos > 0) {
+      dados['numeroEixos'] = numeroEixos;
+    }
+    await _colecao.doc(veiculo.id).update(dados);
+  }
+
+  /// Cancela uma viagem em andamento sem registrar abastecimento.
+  Future<void> cancelarViagemCaminhao(String idVeiculo) async {
+    await _colecao.doc(idVeiculo).update({
+      'viagemAtiva': false,
+      'viagemKmInicial': null,
+      'viagemPesoCargaTon': null,
+      'viagemNotaFiscalCte': '',
+      'viagemRota': '',
+      'viagemIniciadaEm': null,
+    });
+  }
+
   /// Exclui o veículo e também todas as manutenções e abastecimentos dele.
   Future<void> excluir(String id) async {
     final docUsuario = documentoUsuarioAtual();

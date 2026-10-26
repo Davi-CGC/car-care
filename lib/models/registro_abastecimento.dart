@@ -54,6 +54,14 @@ class RegistroAbastecimento {
   final String postoCombustivel;
   final DateTime criadoEm;
 
+  // Dados de Viagem / Controle de Frota de Caminhão (opcionais)
+  final int? kmInicialViagem;
+  final String tipoCarroceria; // Ex: 'Baú', 'Caçamba', 'Sider', 'Graneleiro'
+  final int? numeroEixos; // Ex: 2, 3, 4, 5, 6, 7, 9
+  final double? pesoCargaTon; // Peso da Carga em toneladas (conforme NF / CT-e)
+  final String notaFiscalCte; // Número ou identificação da Nota Fiscal / CT-e
+  final String rotaViagem; // Origem / Destino (opcional)
+
   RegistroAbastecimento({
     this.id = '',
     String? idVeiculo,
@@ -71,6 +79,12 @@ class RegistroAbastecimento {
     bool? isFullTank,
     String? postoCombustivel,
     String? gasStation,
+    this.kmInicialViagem,
+    this.tipoCarroceria = '',
+    this.numeroEixos,
+    this.pesoCargaTon,
+    this.notaFiscalCte = '',
+    this.rotaViagem = '',
     DateTime? criadoEm,
     DateTime? createdAt,
   })  : idVeiculo = idVeiculo ?? vehicleId ?? '',
@@ -97,6 +111,33 @@ class RegistroAbastecimento {
 
   bool get eEletrico => tipoCombustivel == TiposCombustivel.eletricidade;
   bool get isElectric => eEletrico;
+
+  /// Indica se este abastecimento possui dados de viagem de caminhão / frota.
+  bool get possuiDadosViagem =>
+      (kmInicialViagem != null && kmInicialViagem! > 0) ||
+      tipoCarroceria.trim().isNotEmpty ||
+      (numeroEixos != null && numeroEixos! > 0) ||
+      (pesoCargaTon != null && pesoCargaTon! > 0) ||
+      notaFiscalCte.trim().isNotEmpty;
+
+  /// Distância percorrida na viagem (Km Final - Km Inicial).
+  int get kmRodadosViagem =>
+      (kmInicialViagem != null && km > kmInicialViagem!) ? (km - kmInicialViagem!) : 0;
+
+  /// Resultado 1: Km/L (ou km/kWh) da viagem = Km Rodados ÷ Litros Abastecidos.
+  double? get resultadoKmPorLitroViagem =>
+      (kmRodadosViagem > 0 && litros > 0) ? (kmRodadosViagem / litros) : null;
+
+  /// Resultado 2: Custo de Combustível por Km Rodado = Valor Total Gasto ÷ Km Rodados.
+  double? get resultadoCustoPorKmViagem =>
+      (kmRodadosViagem > 0 && precoTotal > 0) ? (precoTotal / kmRodadosViagem) : null;
+
+  String get resumoImplementoViagem {
+    final partes = <String>[];
+    if (tipoCarroceria.trim().isNotEmpty) partes.add(tipoCarroceria.trim());
+    if (numeroEixos != null && numeroEixos! > 0) partes.add('${numeroEixos!} Eixos');
+    return partes.join(' • ');
+  }
 
   String get unidade {
     if (eEletrico) return 'kWh';
@@ -126,6 +167,12 @@ class RegistroAbastecimento {
         'totalPrice': precoTotal,
         'isFullTank': tanqueCheio,
         'gasStation': postoCombustivel,
+        if (kmInicialViagem != null) 'kmInicialViagem': kmInicialViagem,
+        if (tipoCarroceria.trim().isNotEmpty) 'tipoCarroceria': tipoCarroceria.trim(),
+        if (numeroEixos != null) 'numeroEixos': numeroEixos,
+        if (pesoCargaTon != null) 'pesoCargaTon': pesoCargaTon,
+        if (notaFiscalCte.trim().isNotEmpty) 'notaFiscalCte': notaFiscalCte.trim(),
+        if (rotaViagem.trim().isNotEmpty) 'rotaViagem': rotaViagem.trim(),
         'createdAt': Timestamp.fromDate(criadoEm),
       };
 
@@ -141,6 +188,12 @@ class RegistroAbastecimento {
       precoTotal: (d['precoTotal'] as num?)?.toDouble() ?? (d['totalPrice'] as num?)?.toDouble() ?? 0,
       tanqueCheio: d['tanqueCheio'] ?? d['isFullTank'] ?? true,
       postoCombustivel: d['postoCombustivel'] ?? d['gasStation'] ?? '',
+      kmInicialViagem: (d['kmInicialViagem'] as num?)?.toInt(),
+      tipoCarroceria: (d['tipoCarroceria'] ?? '').toString(),
+      numeroEixos: (d['numeroEixos'] as num?)?.toInt(),
+      pesoCargaTon: (d['pesoCargaTon'] as num?)?.toDouble(),
+      notaFiscalCte: (d['notaFiscalCte'] ?? '').toString(),
+      rotaViagem: (d['rotaViagem'] ?? '').toString(),
       criadoEm: (d['criadoEm'] as Timestamp?)?.toDate() ?? (d['createdAt'] as Timestamp?)?.toDate(),
     );
   }

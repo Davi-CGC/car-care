@@ -206,4 +206,31 @@ void main() {
       expect(avalCaminhaoEv?.nivel, equals(NivelConsumo.otimo));
     });
   });
+
+  group('Controle de Frota e Viagem de Caminhão', () {
+    test('Calcula Resultado 1 (Km/L da viagem) e Resultado 2 (Custo por Km Rodado) com precisão', () {
+      final viagemCaminhao = RegistroAbastecimento(
+        id: 't1',
+        idVeiculo: 'truck1',
+        tipoCombustivel: TiposCombustivel.diesel,
+        data: DateTime(2026, 2, 10),
+        kmInicialViagem: 100000,
+        km: 100600, // 600 km rodados
+        litros: 200.0, // 200 L abastecidos -> 3.0 km/L
+        precoTotal: 1200.0, // R$ 1.200,00 -> R$ 2,00/km
+        tipoCarroceria: 'Caçamba',
+        numeroEixos: 6,
+        pesoCargaTon: 32.5,
+        notaFiscalCte: 'CT-e 88920',
+      );
+
+      expect(viagemCaminhao.possuiDadosViagem, isTrue);
+      expect(viagemCaminhao.kmRodadosViagem, equals(600));
+      expect(viagemCaminhao.resumoImplementoViagem, equals('Caçamba • 6 Eixos'));
+      // Resultado 1: Km/L da viagem = 600 / 200 = 3.0 km/L
+      expect(viagemCaminhao.resultadoKmPorLitroViagem, closeTo(3.0, 0.001));
+      // Resultado 2: Custo de Combustível por Km Rodado = 1200.0 / 600 = R$ 2,00/km
+      expect(viagemCaminhao.resultadoCustoPorKmViagem, closeTo(2.0, 0.001));
+    });
+  });
 }

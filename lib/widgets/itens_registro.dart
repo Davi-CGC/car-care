@@ -70,10 +70,94 @@ class ItemAbastecimentoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = registro;
-    final partePosto = r.postoCombustivel.trim().isNotEmpty ? ' ${r.postoCombustivel} • ' : '';
+    final partePosto = r.postoCombustivel.trim().isNotEmpty ? '${r.postoCombustivel} • ' : '';
     final etiquetaTanque = r.eEletrico
         ? (r.tanqueCheio ? 'Carga 100%' : 'Carga Parcial')
         : (r.tanqueCheio ? 'Tanque Cheio' : 'Parcial');
+
+    if (r.possuiDadosViagem) {
+      final resKmL = r.resultadoKmPorLitroViagem;
+      final resCustoKm = r.resultadoCustoPorKmViagem;
+      final kmRodados = r.kmRodadosViagem;
+      return Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: CoresApp.amareloPolen.withValues(alpha: 0.45)),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: aoTocar,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const _CaixaIcone(Icons.local_shipping),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Viagem Finalizada${r.resumoImplementoViagem.isNotEmpty ? " • ${r.resumoImplementoViagem}" : ""}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          Text(
+                            '$partePosto${formatarData(r.data)} • ${r.tipoCombustivel} (${formatarNumero(r.litros, 2)} ${r.unidade})',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      formatarMoeda(r.precoTotal),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: CoresApp.amareloPolen,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    if (r.kmInicialViagem != null)
+                      _BadgeViagem(
+                        icone: Icons.route,
+                        texto:
+                            '${formatarKm(r.kmInicialViagem!)} ➔ ${formatarKm(r.km)} (${formatarKm(kmRodados)} rodados)',
+                      ),
+                    if (r.pesoCargaTon != null && r.pesoCargaTon! > 0)
+                      _BadgeViagem(
+                        icone: Icons.scale,
+                        texto:
+                            'Carga: ${formatarNumero(r.pesoCargaTon!, 1)} t${r.notaFiscalCte.isNotEmpty ? " (NF/CT-e: ${r.notaFiscalCte})" : ""}',
+                      ),
+                    if (resKmL != null)
+                      _BadgeViagem(
+                        icone: Icons.speed,
+                        texto: 'Resultado 1: ${formatarNumero(resKmL, 2)} ${r.unidadeConsumo}',
+                        destaque: true,
+                      ),
+                    if (resCustoKm != null)
+                      _BadgeViagem(
+                        icone: Icons.payments_outlined,
+                        texto: 'Resultado 2: ${formatarMoeda(resCustoKm)}/km',
+                        destaque: true,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Card(
       child: ListTile(
@@ -163,6 +247,48 @@ class _CaixaIcone extends StatelessWidget {
       child: Icon(icone, color: Theme.of(context).brightness == Brightness.dark
           ? CoresApp.amareloPolen
           : CoresApp.obsidian),
+    );
+  }
+}
+
+class _BadgeViagem extends StatelessWidget {
+  final IconData icone;
+  final String texto;
+  final bool destaque;
+
+  const _BadgeViagem({
+    required this.icone,
+    required this.texto,
+    this.destaque = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cor = destaque ? CoresApp.sucesso : CoresApp.amareloPolen;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: cor.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icone, size: 13, color: cor),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              texto,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: destaque ? FontWeight.bold : FontWeight.w600,
+                color: destaque ? cor : null,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
