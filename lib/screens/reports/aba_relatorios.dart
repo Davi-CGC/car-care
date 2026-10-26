@@ -65,6 +65,7 @@ class AbaRelatorios extends StatefulWidget {
 class _AbaRelatoriosState extends State<AbaRelatorios> {
   PeriodFilter _period = PeriodFilter.mes;
   VehicleTypeFilter _typeFilter = VehicleTypeFilter.todos;
+  String? _selectedVehicleId; // null = Todos juntos; preenchido = Apenas 1 veículo específico
   int? _selectedBarIndex;
 
   @override
@@ -80,13 +81,25 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
       );
     }
 
-    // Filtrar por tipo de veículo
-    final filteredVehicles = widget.vehicles.where((v) {
-      if (_typeFilter == VehicleTypeFilter.carros) return v.isCar;
-      if (_typeFilter == VehicleTypeFilter.motos) return v.isMotorcycle;
-      if (_typeFilter == VehicleTypeFilter.caminhoes) return v.isTruck;
-      return true;
-    }).toList();
+    // Se o veículo selecionado foi excluído, volta para "Todos juntos"
+    if (_selectedVehicleId != null &&
+        !widget.vehicles.any((v) => v.id == _selectedVehicleId)) {
+      _selectedVehicleId = null;
+    }
+
+    final Veiculo? singleVehicle = _selectedVehicleId == null
+        ? null
+        : widget.vehicles.firstWhere((v) => v.id == _selectedVehicleId);
+
+    // Filtrar por veículo individual OU por tipo de veículo (quando "Todos juntos" está ativo)
+    final filteredVehicles = singleVehicle != null
+        ? <Veiculo>[singleVehicle]
+        : widget.vehicles.where((v) {
+            if (_typeFilter == VehicleTypeFilter.carros) return v.isCar;
+            if (_typeFilter == VehicleTypeFilter.motos) return v.isMotorcycle;
+            if (_typeFilter == VehicleTypeFilter.caminhoes) return v.isTruck;
+            return true;
+          }).toList();
 
     final allowedVehicleIds = filteredVehicles.map((v) => v.id).toSet();
 
@@ -114,13 +127,16 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
           style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         Text(
-          'Gráficos comparativos e consumo por veículo',
+          singleVehicle != null
+              ? 'Exibindo gráfico e consumo exclusivo de ${singleVehicle.name}'
+              : 'Veja todos os veículos juntos ou selecione um veículo específico abaixo',
           style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
         ),
         const SizedBox(height: 16),
 
         // Filtros (Semana / Mês / Ano)
         SegmentedButton<PeriodFilter>(
+          showSelectedIcon: false,
           segments: const [
             ButtonSegment(value: PeriodFilter.semana, label: Text('Semana')),
             ButtonSegment(value: PeriodFilter.mes, label: Text('Mês')),
@@ -134,48 +150,96 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
             });
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
 
+        // Seleção: Todos os veículos juntos OU 1 veículo individual
+        const Text(
+          'Visualizar gráfico de:',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+        ),
+        const SizedBox(height: 6),
         Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 8,
-          runSpacing: 6,
+          runSpacing: 8,
           children: [
-            const Text('Filtrar:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
             ChoiceChip(
-              label: const Text('Todos'),
-              selected: _typeFilter == VehicleTypeFilter.todos,
+              avatar: Icon(
+                Icons.dashboard_customize,
+                size: 16,
+                color: _selectedVehicleId == null ? AppColors.obsidian : Colors.grey,
+              ),
+              label: const Text('Todos juntos'),
+              selected: _selectedVehicleId == null,
               onSelected: (_) => setState(() {
-                _typeFilter = VehicleTypeFilter.todos;
+                _selectedVehicleId = null;
                 _selectedBarIndex = null;
               }),
             ),
-            ChoiceChip(
-              label: const Text('Carros'),
-              selected: _typeFilter == VehicleTypeFilter.carros,
-              onSelected: (_) => setState(() {
-                _typeFilter = VehicleTypeFilter.carros;
-                _selectedBarIndex = null;
-              }),
-            ),
-            ChoiceChip(
-              label: const Text('Motos'),
-              selected: _typeFilter == VehicleTypeFilter.motos,
-              onSelected: (_) => setState(() {
-                _typeFilter = VehicleTypeFilter.motos;
-                _selectedBarIndex = null;
-              }),
-            ),
-            ChoiceChip(
-              label: const Text('Caminhões'),
-              selected: _typeFilter == VehicleTypeFilter.caminhoes,
-              onSelected: (_) => setState(() {
-                _typeFilter = VehicleTypeFilter.caminhoes;
-                _selectedBarIndex = null;
-              }),
-            ),
+            ...widget.vehicles.map((v) {
+              final isSelected = _selectedVehicleId == v.id;
+              return ChoiceChip(
+                avatar: Icon(
+                  v.isTruck
+                      ? Icons.local_shipping
+                      : (v.isMotorcycle ? Icons.two_wheeler : Icons.directions_car),
+                  size: 16,
+                  color: isSelected ? AppColors.obsidian : Colors.grey,
+                ),
+                label: Text(v.name),
+                selected: isSelected,
+                onSelected: (_) => setState(() {
+                  _selectedVehicleId = isSelected ? null : v.id;
+                  _selectedBarIndex = null;
+                }),
+              );
+            }),
           ],
         ),
+
+        // Filtro complementar por categoria apenas quando "Todos juntos" está selecionado e há mais de 1 veículo
+        if (_selectedVehicleId == null && widget.vehicles.length > 1) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              const Text('Categoria:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+              ChoiceChip(
+                label: const Text('Todos'),
+                selected: _typeFilter == VehicleTypeFilter.todos,
+                onSelected: (_) => setState(() {
+                  _typeFilter = VehicleTypeFilter.todos;
+                  _selectedBarIndex = null;
+                }),
+              ),
+              ChoiceChip(
+                label: const Text('Carros'),
+                selected: _typeFilter == VehicleTypeFilter.carros,
+                onSelected: (_) => setState(() {
+                  _typeFilter = VehicleTypeFilter.carros;
+                  _selectedBarIndex = null;
+                }),
+              ),
+              ChoiceChip(
+                label: const Text('Motos'),
+                selected: _typeFilter == VehicleTypeFilter.motos,
+                onSelected: (_) => setState(() {
+                  _typeFilter = VehicleTypeFilter.motos;
+                  _selectedBarIndex = null;
+                }),
+              ),
+              ChoiceChip(
+                label: const Text('Caminhões'),
+                selected: _typeFilter == VehicleTypeFilter.caminhoes,
+                onSelected: (_) => setState(() {
+                  _typeFilter = VehicleTypeFilter.caminhoes;
+                  _selectedBarIndex = null;
+                }),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 16),
 
         // Resumo do Período
@@ -197,7 +261,7 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                   color: AppColors.goldenPollen,
                 ),
                 _HeaderStat(
-                  label: 'Combustível',
+                  label: singleVehicle != null && singleVehicle.isElectric ? 'Recargas' : 'Combustível',
                   value: formatMoney(totalFuelSpent),
                   color: isDark ? Colors.amber[200]! : Colors.orange[800]!,
                 ),
@@ -224,15 +288,29 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Gastos por ${_period == PeriodFilter.semana ? 'Dia' : _period == PeriodFilter.mes ? 'Semana' : 'Mês'}',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Gastos por ${_period == PeriodFilter.semana ? 'Dia' : _period == PeriodFilter.mes ? 'Semana' : 'Mês'}',
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            singleVehicle != null ? singleVehicle.name : 'Todos os veículos selecionados',
+                            style: const TextStyle(fontSize: 12, color: AppColors.goldenPollen, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                     ),
                     Row(
                       children: [
-                        _LegendDot(color: AppColors.goldenPollen, label: 'Combustível'),
+                        _LegendDot(
+                          color: AppColors.goldenPollen,
+                          label: singleVehicle != null && singleVehicle.isElectric ? 'Recarga' : 'Combustível',
+                        ),
                         const SizedBox(width: 10),
-                        _LegendDot(color: Colors.blue, label: 'Manutenção'),
+                        const _LegendDot(color: Colors.blue, label: 'Manutenção'),
                       ],
                     ),
                   ],
@@ -269,18 +347,45 @@ class _AbaRelatoriosState extends State<AbaRelatorios> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Icon(Icons.receipt_long, color: AppColors.goldenPollen),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.receipt_long, color: AppColors.goldenPollen, size: 22),
+                      const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          'Detalhamento: ${selectedBar.fullLabel}',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Detalhamento do período',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              selectedBar.fullLabel,
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        formatMoney(selectedBar.total),
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldenPollen.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          formatMoney(selectedBar.total),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            color: isDark ? AppColors.goldenPollen : AppColors.obsidian,
+                          ),
+                        ),
                       ),
                     ],
                   ),

@@ -1079,48 +1079,93 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
   }
 }
 
-/// Bloquinho rolável inline que exibe até 5 opções por vez embaixo do campo
-/// e filtra automaticamente conforme a pessoa digita ou rola a lista.
-class _CaixaOpcoesRolavel extends StatefulWidget {
+/// Campo de texto que abre um modal flutuante com 5 opções roláveis APENAS quando
+/// o usuário clica no campo para digitar ou escolher, fechando automaticamente ao selecionar.
+class _CampoComOpcoesModal extends StatefulWidget {
+  final TextEditingController controller;
+  final String labelText;
+  final String? hintText;
+  final IconData prefixIcon;
   final List<String> opcoes;
   final String valorSelecionado;
-  final String filtroTexto;
   final ValueChanged<String> aoSelecionar;
+  final ValueChanged<String>? aoDigitar;
+  final VoidCallback? aoLimpar;
+  final FormFieldValidator<String>? validator;
+  final TextInputType? keyboardType;
   final String Function(String)? subtituloOpcao;
   final IconData Function(String)? iconeOpcao;
-  final String? rotuloCabecalho;
+  final bool carregando;
+  final Widget? trailingExtra;
 
-  const _CaixaOpcoesRolavel({
+  const _CampoComOpcoesModal({
+    required this.controller,
+    required this.labelText,
+    required this.prefixIcon,
     required this.opcoes,
     required this.valorSelecionado,
-    required this.filtroTexto,
     required this.aoSelecionar,
+    this.hintText,
+    this.aoDigitar,
+    this.aoLimpar,
+    this.validator,
+    this.keyboardType,
     this.subtituloOpcao,
     this.iconeOpcao,
-    this.rotuloCabecalho,
+    this.carregando = false,
+    this.trailingExtra,
   });
 
   @override
-  State<_CaixaOpcoesRolavel> createState() => _CaixaOpcoesRolavelState();
+  State<_CampoComOpcoesModal> createState() => _CampoComOpcoesModalState();
 }
 
-class _CaixaOpcoesRolavelState extends State<_CaixaOpcoesRolavel> {
+class _CampoComOpcoesModalState extends State<_CampoComOpcoesModal> {
+  final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollCtrl = ScrollController();
+  bool _aberto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  void _onFocusChange() {
+    if (!mounted) return;
+    if (_focusNode.hasFocus) {
+      setState(() => _aberto = true);
+    }
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    widget.controller.removeListener(_onControllerChanged);
+    _focusNode.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _fecharModal() {
+    if (_aberto || _focusNode.hasFocus) {
+      setState(() => _aberto = false);
+      _focusNode.unfocus();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
     final eEscuro = tema.brightness == Brightness.dark;
-    final q = widget.filtroTexto.trim().toLowerCase();
+    final textoAtual = widget.controller.text;
+    final q = textoAtual.trim().toLowerCase();
 
-    // Se o texto digitado for exatamente igual ao selecionado, mostra todas as opções
-    // para que a pessoa possa rolar o bloquinho livremente se quiser trocar.
     final mostrarTodas = q.isEmpty ||
         (widget.valorSelecionado.trim().isNotEmpty &&
             q == widget.valorSelecionado.trim().toLowerCase());
@@ -1129,153 +1174,215 @@ class _CaixaOpcoesRolavelState extends State<_CaixaOpcoesRolavel> {
         ? widget.opcoes
         : widget.opcoes.where((item) => item.toLowerCase().contains(q)).toList();
 
-    if (filtradas.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.only(top: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: eEscuro ? const Color(0xFF1A1A20) : const Color(0xFFF7F7F9),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
-        ),
-        child: const Text(
-          'Nenhuma opção encontrada.',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-      );
-    }
-
-    // Altura de ~42px por linha -> 5 opções visíveis por vez (~210px)
-    final double alturaItem = widget.subtituloOpcao != null ? 50.0 : 42.0;
+    final double alturaItem = widget.subtituloOpcao != null ? 50.0 : 44.0;
     final int qtdVisivel = filtradas.length < 5 ? filtradas.length : 5;
     final double alturaCaixa = qtdVisivel * alturaItem;
 
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      decoration: BoxDecoration(
-        color: eEscuro ? const Color(0xFF1A1A20) : const Color(0xFFF7F7F9),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.goldenPollen.withValues(alpha: 0.35),
-        ),
-      ),
+    return TapRegion(
+      onTapOutside: (_) => _fecharModal(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.rotuloCabecalho != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.goldenPollen.withValues(alpha: 0.10),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-              ),
-              child: Row(
+          TextFormField(
+            controller: widget.controller,
+            focusNode: _focusNode,
+            keyboardType: widget.keyboardType,
+            validator: widget.validator,
+            onTap: () {
+              if (!_aberto) setState(() => _aberto = true);
+            },
+            onChanged: (val) {
+              if (!_aberto) setState(() => _aberto = true);
+              widget.aoDigitar?.call(val);
+            },
+            decoration: InputDecoration(
+              labelText: widget.labelText,
+              hintText: widget.hintText,
+              prefixIcon: Icon(widget.prefixIcon),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.swipe_vertical, size: 13, color: AppColors.goldenPollen),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      widget.rotuloCabecalho!,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey,
+                  if (widget.carregando)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
-                  ),
-                  Text(
-                    '${filtradas.length} opções',
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  if (textoAtual.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      tooltip: 'Limpar',
+                      onPressed: () {
+                        if (widget.aoLimpar != null) {
+                          widget.aoLimpar!();
+                        } else {
+                          widget.controller.clear();
+                        }
+                        setState(() => _aberto = true);
+                        _focusNode.requestFocus();
+                      },
+                    ),
+                  if (widget.trailingExtra != null) widget.trailingExtra!,
+                  IconButton(
+                    icon: Icon(
+                      _aberto ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 20,
+                    ),
+                    tooltip: _aberto ? 'Fechar opções' : 'Ver opções',
+                    onPressed: () {
+                      setState(() => _aberto = !_aberto);
+                      if (_aberto) {
+                        _focusNode.requestFocus();
+                      } else {
+                        _focusNode.unfocus();
+                      }
+                    },
                   ),
                 ],
               ),
             ),
-          SizedBox(
-            height: alturaCaixa,
-            child: Scrollbar(
-              controller: _scrollCtrl,
-              thumbVisibility: filtradas.length > 5,
-              child: ListView.separated(
-                controller: _scrollCtrl,
-                padding: EdgeInsets.zero,
-                itemCount: filtradas.length,
-                separatorBuilder: (_, _) => Divider(
-                  height: 1,
-                  color: Colors.grey.withValues(alpha: 0.15),
+          ),
+          if (_aberto && (filtradas.isNotEmpty || widget.carregando))
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Material(
+                elevation: 8,
+                shadowColor: Colors.black.withValues(alpha: 0.45),
+                color: eEscuro ? const Color(0xFF1E1E26) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: AppColors.goldenPollen.withValues(alpha: 0.5),
+                  ),
                 ),
-                itemBuilder: (context, index) {
-                  final item = filtradas[index];
-                  final selecionado =
-                      item.toLowerCase() == widget.valorSelecionado.trim().toLowerCase();
-                  final subtitulo = widget.subtituloOpcao?.call(item);
-                  final icone = widget.iconeOpcao?.call(item);
-
-                  return InkWell(
-                    onTap: () => widget.aoSelecionar(item),
-                    child: Container(
-                      height: alturaItem,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      color: selecionado
-                          ? AppColors.goldenPollen.withValues(alpha: 0.16)
-                          : Colors.transparent,
-                      child: Row(
-                        children: [
-                          if (icone != null) ...[
-                            Icon(
-                              icone,
-                              size: 17,
-                              color: selecionado ? AppColors.goldenPollen : Colors.grey,
+                clipBehavior: Clip.antiAlias,
+                child: filtradas.isEmpty && widget.carregando
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Buscando opções...',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ),
                           ],
-                          Expanded(
-                            child: subtitulo != null && subtitulo.isNotEmpty
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                      )
+                    : SizedBox(
+                        height: alturaCaixa,
+                        child: Scrollbar(
+                          controller: _scrollCtrl,
+                          thumbVisibility: filtradas.length > 5,
+                          child: ListView.separated(
+                            controller: _scrollCtrl,
+                            padding: EdgeInsets.zero,
+                            itemCount: filtradas.length,
+                            separatorBuilder: (_, _) => Divider(
+                              height: 1,
+                              color: Colors.grey.withValues(alpha: 0.15),
+                            ),
+                            itemBuilder: (context, index) {
+                              final item = filtradas[index];
+                              final selecionado = item.toLowerCase() ==
+                                  widget.valorSelecionado.trim().toLowerCase();
+                              final subtitulo = widget.subtituloOpcao?.call(item);
+                              final icone = widget.iconeOpcao?.call(item);
+
+                              return InkWell(
+                                onTap: () {
+                                  widget.aoSelecionar(item);
+                                  _fecharModal();
+                                },
+                                child: Container(
+                                  height: alturaItem,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  color: selecionado
+                                      ? AppColors.goldenPollen.withValues(alpha: 0.16)
+                                      : Colors.transparent,
+                                  child: Row(
                                     children: [
-                                      Text(
-                                        item,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight:
-                                              selecionado ? FontWeight.bold : FontWeight.w500,
-                                          color: selecionado ? AppColors.goldenPollen : null,
+                                      if (icone != null) ...[
+                                        Icon(
+                                          icone,
+                                          size: 18,
+                                          color:
+                                              selecionado ? AppColors.goldenPollen : Colors.grey,
                                         ),
+                                        const SizedBox(width: 10),
+                                      ],
+                                      Expanded(
+                                        child: subtitulo != null && subtitulo.isNotEmpty
+                                            ? Column(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    item,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight: selecionado
+                                                          ? FontWeight.bold
+                                                          : FontWeight.w500,
+                                                      color: selecionado
+                                                          ? AppColors.goldenPollen
+                                                          : null,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    subtitulo,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 10,
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                                ],
+                                              )
+                                            : Text(
+                                                item,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: selecionado
+                                                      ? FontWeight.bold
+                                                      : FontWeight.normal,
+                                                  color:
+                                                      selecionado ? AppColors.goldenPollen : null,
+                                                ),
+                                              ),
                                       ),
-                                      Text(
-                                        subtitulo,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                      ),
+                                      if (selecionado)
+                                        const Icon(
+                                          Icons.check_circle,
+                                          size: 17,
+                                          color: AppColors.goldenPollen,
+                                        ),
                                     ],
-                                  )
-                                : Text(
-                                    item,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight:
-                                          selecionado ? FontWeight.bold : FontWeight.normal,
-                                      color: selecionado ? AppColors.goldenPollen : null,
-                                    ),
                                   ),
+                                ),
+                              );
+                            },
                           ),
-                          if (selecionado)
-                            const Icon(Icons.check_circle, size: 17, color: AppColors.goldenPollen),
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                },
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1721,25 +1828,31 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               const SizedBox(height: 6),
               SegmentedButton<VehiclePropulsion>(
                 showSelectedIcon: false,
-                style: const ButtonStyle(
+                style: ButtonStyle(
                   visualDensity: VisualDensity.compact,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const WidgetStatePropertyAll(
+                    EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  ),
+                  textStyle: const WidgetStatePropertyAll(
+                    TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
                 ),
                 segments: const [
                   ButtonSegment(
                     value: VehiclePropulsion.combustao,
                     label: Text('Combustão', maxLines: 1, softWrap: false),
-                    icon: Icon(Icons.local_gas_station, size: 16),
+                    icon: Icon(Icons.local_gas_station, size: 15),
                   ),
                   ButtonSegment(
                     value: VehiclePropulsion.hibrido,
                     label: Text('Híbrido', maxLines: 1, softWrap: false),
-                    icon: Icon(Icons.electric_car, size: 16),
+                    icon: Icon(Icons.electric_car, size: 15),
                   ),
                   ButtonSegment(
                     value: VehiclePropulsion.eletrico,
                     label: Text('Elétrico', maxLines: 1, softWrap: false),
-                    icon: Icon(Icons.ev_station, size: 16),
+                    icon: Icon(Icons.ev_station, size: 15),
                   ),
                 ],
                 selected: {_propulsion},
@@ -1780,104 +1893,67 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
               ],
               const SizedBox(height: 16),
 
-              // CAMPO DE MARCA + BLOQUINHO DE 5 OPÇÕES ROLÁVEL E FILTRÁVEL
-              TextFormField(
+              // CAMPO DE MARCA (MODAL DE 5 OPÇÕES SÓ ABRE AO CLICAR NO BLOCO)
+              _CampoComOpcoesModal(
                 controller: _brand,
-                decoration: InputDecoration(
-                  labelText: 'Marca (digite para filtrar ou escolha abaixo)',
-                  prefixIcon: const Icon(Icons.business),
-                  hintText: _type == VehicleType.caminhao
-                      ? 'Ex: Scania, Volvo, Volkswagen, BYD'
-                      : (_type == VehicleType.moto
-                          ? 'Ex: Honda, Yamaha, Voltz, Watts'
-                          : 'Ex: Volkswagen, BYD, GWM, Toyota'),
-                  suffixIcon: _brand.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          tooltip: 'Limpar marca',
-                          onPressed: () {
-                            setState(() {
-                              _brand.clear();
-                              _model.clear();
-                              _fipeModels = [];
-                              _fipeYears = [];
-                              _autoFipeResult = null;
-                            });
-                          },
-                        )
-                      : null,
-                ),
+                labelText: 'Marca',
+                hintText: _type == VehicleType.caminhao
+                    ? 'Ex: Scania, Volvo, Volkswagen, BYD'
+                    : (_type == VehicleType.moto
+                        ? 'Ex: Honda, Yamaha, Voltz, Watts'
+                        : 'Ex: Volkswagen, BYD, GWM, Toyota'),
+                prefixIcon: Icons.business,
+                opcoes: brandsList,
+                valorSelecionado: _brand.text,
                 validator: (v) => Validators.required(v, 'Marca'),
-                onChanged: (val) {
+                aoDigitar: (val) {
                   _loadFipeModelsForBrandName(val);
                   setState(() => _autoDetectPropulsion(val, _model.text));
                 },
-              ),
-              _CaixaOpcoesRolavel(
-                opcoes: brandsList,
-                valorSelecionado: _brand.text,
-                filtroTexto: _brand.text,
-                rotuloCabecalho: 'Role para escolher a Marca (5 por vez)',
+                aoLimpar: () {
+                  setState(() {
+                    _brand.clear();
+                    _model.clear();
+                    _fipeModels = [];
+                    _fipeYears = [];
+                    _autoFipeResult = null;
+                  });
+                },
                 aoSelecionar: _selectBrand,
               ),
               const SizedBox(height: 14),
 
-              // CAMPO DE MODELO + BLOQUINHO DE 5 OPÇÕES ROLÁVEL E FILTRÁVEL
-              TextFormField(
+              // CAMPO DE MODELO (MODAL DE 5 OPÇÕES SÓ ABRE AO CLICAR NO BLOCO)
+              _CampoComOpcoesModal(
                 controller: _model,
-                decoration: InputDecoration(
-                  labelText: _brand.text.trim().isNotEmpty
-                      ? 'Modelo — ${_brand.text.trim()} (digite ou role abaixo)'
-                      : 'Modelo (digite para filtrar ou role abaixo)',
-                  prefixIcon: Icon(
-                    _type == VehicleType.caminhao
-                        ? Icons.local_shipping
-                        : (_type == VehicleType.moto ? Icons.two_wheeler : Icons.directions_car_filled),
-                  ),
-                  hintText: _type == VehicleType.caminhao
-                      ? 'Ex: FH 540, e-Delivery, Actros'
-                      : (_type == VehicleType.moto
-                          ? 'Ex: CG 160 Titan, EVS, Fazer 250'
-                          : 'Ex: Gol, Dolphin, Corolla Hybrid'),
-                  suffixIcon: _loadingFipeModels
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : (_model.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              tooltip: 'Limpar modelo',
-                              onPressed: () {
-                                setState(() {
-                                  _model.clear();
-                                  _fipeYears = [];
-                                  _autoFipeResult = null;
-                                });
-                              },
-                            )
-                          : null),
-                ),
+                labelText: _brand.text.trim().isNotEmpty
+                    ? 'Modelo (${_brand.text.trim()})'
+                    : 'Modelo',
+                hintText: _type == VehicleType.caminhao
+                    ? 'Ex: FH 540, e-Delivery, Actros'
+                    : (_type == VehicleType.moto
+                        ? 'Ex: CG 160 Titan, EVS, Fazer 250'
+                        : 'Ex: Gol, Dolphin, Corolla Hybrid'),
+                prefixIcon: _type == VehicleType.caminhao
+                    ? Icons.local_shipping
+                    : (_type == VehicleType.moto ? Icons.two_wheeler : Icons.directions_car_filled),
+                opcoes: modelsForBrand,
+                valorSelecionado: _model.text,
+                carregando: _loadingFipeModels,
                 validator: (v) => Validators.required(v, 'Modelo'),
-                onChanged: (val) {
+                aoDigitar: (val) {
                   setState(() => _autoDetectPropulsion(_brand.text, val));
                   _tryAutoLookupFipe(val);
                 },
+                aoLimpar: () {
+                  setState(() {
+                    _model.clear();
+                    _fipeYears = [];
+                    _autoFipeResult = null;
+                  });
+                },
+                aoSelecionar: _selectModel,
               ),
-              if (modelsForBrand.isNotEmpty)
-                _CaixaOpcoesRolavel(
-                  opcoes: modelsForBrand,
-                  valorSelecionado: _model.text,
-                  filtroTexto: _model.text,
-                  rotuloCabecalho: _brand.text.trim().isNotEmpty
-                      ? 'Modelos de ${_brand.text.trim()} (role ou digite)'
-                      : 'Modelos disponíveis (role ou digite)',
-                  aoSelecionar: _selectModel,
-                ),
 
               // CARD AUTOMÁTICO DA TABELA FIPE ASSIM QUE ESCOLHE O MODELO
               if (_loadingFipePrice) ...[
@@ -1935,20 +2011,28 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
 
               const SizedBox(height: 12),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: TextFormField(
+                    child: _CampoComOpcoesModal(
                       controller: _year,
-                      decoration: const InputDecoration(
-                        labelText: 'Ano',
-                        prefixIcon: Icon(Icons.calendar_today),
-                      ),
+                      labelText: 'Ano',
+                      prefixIcon: Icons.calendar_today,
                       keyboardType: TextInputType.number,
+                      opcoes: _fipeYears.map((y) => y.name).toList(),
+                      valorSelecionado: _year.text,
                       validator: Validators.year,
-                      onChanged: (val) {
+                      aoDigitar: (val) {
                         if (val.trim().length == 4) {
                           _onYearSelectedOrChanged(val);
                         }
+                      },
+                      aoSelecionar: (yearLabel) {
+                        final matchDigits = RegExp(r'\b(19\d\d|20\d\d)\b').firstMatch(yearLabel);
+                        setState(() {
+                          _year.text = matchDigits != null ? matchDigits.group(0)! : yearLabel.split(' ').first;
+                        });
+                        _onYearSelectedOrChanged(yearLabel);
                       },
                     ),
                   ),
@@ -1964,21 +2048,6 @@ class _VehicleFormSheetState extends State<_VehicleFormSheet> {
                   ),
                 ],
               ),
-              if (_fipeYears.isNotEmpty) ...[
-                _CaixaOpcoesRolavel(
-                  opcoes: _fipeYears.map((y) => y.name).toList(),
-                  valorSelecionado: _year.text,
-                  filtroTexto: '',
-                  rotuloCabecalho: 'Anos / Versões na Tabela FIPE (toque para atualizar o preço)',
-                  aoSelecionar: (yearLabel) {
-                    final matchDigits = RegExp(r'\b(19\d\d|20\d\d)\b').firstMatch(yearLabel);
-                    setState(() {
-                      _year.text = matchDigits != null ? matchDigits.group(0)! : yearLabel.split(' ').first;
-                    });
-                    _onYearSelectedOrChanged(yearLabel);
-                  },
-                ),
-              ],
               const SizedBox(height: 12),
               AppTextField(
                 controller: _tankCapacity,
@@ -2354,30 +2423,18 @@ class _MaintenanceFormSheetState extends State<_MaintenanceFormSheet> {
                 onChanged: _onVehicleChanged,
               ),
               const SizedBox(height: 12),
-              TextFormField(
+              _CampoComOpcoesModal(
                 controller: _categoryFilterCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Serviço / Categoria (digite ou role abaixo)',
-                  hintText: 'Ex: Troca de óleo, Pneus, Freio...',
-                  prefixIcon: Icon(MaintenanceCatalog.find(effectiveCategory)?.icon ?? Icons.build),
-                  suffixIcon: _categoryFilterCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          tooltip: 'Limpar filtro para ver todos',
-                          onPressed: () => setState(() => _categoryFilterCtrl.clear()),
-                        )
-                      : null,
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Selecione ou digite um serviço' : null,
-                onChanged: (val) => setState(() {}),
-              ),
-              _CaixaOpcoesRolavel(
+                labelText: 'Serviço / Categoria',
+                hintText: 'Ex: Troca de óleo, Pneus, Freio...',
+                prefixIcon: MaintenanceCatalog.find(effectiveCategory)?.icon ?? Icons.build,
                 opcoes: categories,
                 valorSelecionado: effectiveCategory,
-                filtroTexto: _categoryFilterCtrl.text,
-                rotuloCabecalho: 'Serviços compatíveis (role 5 por vez ou digite acima)',
                 iconeOpcao: (cat) => MaintenanceCatalog.find(cat)?.icon ?? Icons.build,
                 subtituloOpcao: _categorySubtitle,
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Selecione ou digite um serviço' : null,
+                aoDigitar: (_) => setState(() {}),
+                aoLimpar: () => setState(() => _categoryFilterCtrl.clear()),
                 aoSelecionar: _onCategoryChanged,
               ),
               const SizedBox(height: 12),
@@ -2624,11 +2681,15 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
     _fetchNearbyStations();
   }
 
-  Future<void> _fetchNearbyStations() async {
+  Future<void> _fetchNearbyStations({bool forcar = false}) async {
     final isEv = _selectedFuelType == FuelTypes.eletricidade;
     setState(() => _loadingNearbyStations = true);
     try {
-      final list = await _nearbyService.buscarPostosProximos(eletrico: isEv);
+      final list = await _nearbyService.buscarPostosProximos(
+        eletrico: isEv,
+        tipoCombustivel: _selectedFuelType,
+        forcarAtualizacao: forcar,
+      );
       if (mounted) {
         setState(() => _nearbyStations = list);
       }
@@ -2657,7 +2718,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
       (x) => x.id == val,
       orElse: () => widget.vehicles.first,
     );
-    final oldWasEv = _selectedFuelType == FuelTypes.eletricidade;
+    final oldFuel = _selectedFuelType;
     setState(() {
       _selectedVehicleId = val;
       if (widget.existing == null) {
@@ -2671,8 +2732,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
         }
       }
     });
-    final newIsEv = _selectedFuelType == FuelTypes.eletricidade;
-    if (oldWasEv != newIsEv) {
+    if (oldFuel != _selectedFuelType) {
       _fetchNearbyStations();
     }
   }
@@ -2847,10 +2907,12 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
         combinedStationNames.add(vSt);
       }
     }
-    final fallbackSuggestions = isElectricFuel ? _evStationSuggestions : _stationSuggestions;
-    for (final s in fallbackSuggestions) {
-      if (!combinedStationNames.any((x) => x.toLowerCase() == s.toLowerCase())) {
-        combinedStationNames.add(s);
+    if (combinedStationNames.isEmpty && !_loadingNearbyStations) {
+      final fallbackSuggestions = isElectricFuel ? _evStationSuggestions : _stationSuggestions;
+      for (final s in fallbackSuggestions) {
+        if (!combinedStationNames.any((x) => x.toLowerCase() == s.toLowerCase())) {
+          combinedStationNames.add(s);
+        }
       }
     }
 
@@ -2939,11 +3001,9 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                 onChanged: allowedFuels.length <= 1
                     ? null
                     : (val) {
-                        if (val != null) {
-                          final oldEv = _selectedFuelType == FuelTypes.eletricidade;
+                        if (val != null && val != _selectedFuelType) {
                           setState(() => _selectedFuelType = val);
-                          final newEv = _selectedFuelType == FuelTypes.eletricidade;
-                          if (oldEv != newEv) _fetchNearbyStations();
+                          _fetchNearbyStations();
                         }
                       },
               ),
@@ -3144,50 +3204,24 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
               ),
               const SizedBox(height: 14),
 
-              // CAMPO DE POSTO / ELETROPOSTO COM BLOQUINHO ROLÁVEL DE 5 OPÇÕES (POSTOS PRÓXIMOS + VISITADOS)
-              TextFormField(
+              // CAMPO DE POSTO / ELETROPOSTO COM MODAL DE 5 OPÇÕES AO CLICAR (POSTOS PRÓXIMOS + VISITADOS)
+              _CampoComOpcoesModal(
                 controller: _gasStation,
-                decoration: InputDecoration(
-                  labelText: isElectricFuel
-                      ? 'Eletroposto / Local de Recarga (opcional)'
-                      : 'Posto de Combustível (opcional)',
-                  hintText: isElectricFuel
-                      ? 'Digite para filtrar ou escolha um eletroposto abaixo'
-                      : 'Digite para filtrar ou escolha um posto próximo abaixo',
-                  prefixIcon: Icon(isElectricFuel ? Icons.ev_station : Icons.storefront),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_gasStation.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          tooltip: 'Limpar campo',
-                          onPressed: () => setState(() => _gasStation.clear()),
-                        ),
-                      IconButton(
-                        icon: _loadingNearbyStations
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.my_location, size: 18),
-                        tooltip: 'Buscar postos perto de mim',
-                        onPressed: _loadingNearbyStations ? null : _fetchNearbyStations,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              _CaixaOpcoesRolavel(
+                labelText: isElectricFuel
+                    ? 'Eletroposto / Local de Recarga (opcional)'
+                    : 'Posto de Combustível (opcional)',
+                hintText: isElectricFuel
+                    ? 'Toque para ver eletropostos perto de você'
+                    : 'Toque para ver postos de $_selectedFuelType perto de você',
+                prefixIcon: isElectricFuel ? Icons.ev_station : Icons.storefront,
                 opcoes: combinedStationNames,
                 valorSelecionado: _gasStation.text,
-                filtroTexto: _gasStation.text,
-                rotuloCabecalho: _loadingNearbyStations
-                    ? 'Localizando postos próximos de você...'
-                    : (_nearbyStations.isNotEmpty
-                        ? 'Postos perto de você e visitados (role 5 por vez)'
-                        : 'Postos visitados e sugeridos (role 5 por vez)'),
+                carregando: _loadingNearbyStations,
+                trailingExtra: IconButton(
+                  icon: const Icon(Icons.my_location, size: 18),
+                  tooltip: 'Atualizar postos perto de mim',
+                  onPressed: _loadingNearbyStations ? null : () => _fetchNearbyStations(forcar: true),
+                ),
                 iconeOpcao: (st) {
                   final key = st.toLowerCase();
                   if (nearbyMap.containsKey(key)) return Icons.near_me;
@@ -3209,6 +3243,7 @@ class _FuelFormSheetState extends State<_FuelFormSheet> {
                   }
                   return '';
                 },
+                aoLimpar: () => setState(() => _gasStation.clear()),
                 aoSelecionar: (selection) {
                   setState(() {
                     _gasStation.text = selection;
@@ -3627,29 +3662,18 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
               const SizedBox(height: 16),
             ],
 
-            // MARCA FIPE COM BLOQUINHO DE 5 OPÇÕES
+            // MARCA FIPE COM MODAL DE 5 OPÇÕES AO CLICAR
             if (_loadingBrands)
               const Center(child: CircularProgressIndicator())
             else if (_brands.isNotEmpty) ...[
-              TextFormField(
+              _CampoComOpcoesModal(
                 controller: _brandFilterCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Marca FIPE (digite ou role abaixo)',
-                  prefixIcon: const Icon(Icons.business),
-                  suffixIcon: _brandFilterCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () => setState(() => _brandFilterCtrl.clear()),
-                        )
-                      : null,
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              _CaixaOpcoesRolavel(
+                labelText: 'Marca FIPE',
+                prefixIcon: Icons.business,
                 opcoes: _brands.map((b) => b.name).toList(),
                 valorSelecionado: _selectedBrand?.name ?? '',
-                filtroTexto: _brandFilterCtrl.text,
-                rotuloCabecalho: 'Marcas FIPE (role 5 por vez)',
+                aoDigitar: (_) => setState(() {}),
+                aoLimpar: () => setState(() => _brandFilterCtrl.clear()),
                 aoSelecionar: (nome) {
                   final b = _brands.firstWhere((x) => x.name == nome);
                   _loadModels(b);
@@ -3658,29 +3682,18 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
             ],
             const SizedBox(height: 12),
 
-            // MODELO FIPE COM BLOQUINHO DE 5 OPÇÕES
+            // MODELO FIPE COM MODAL DE 5 OPÇÕES AO CLICAR
             if (_loadingModels)
               const Center(child: CircularProgressIndicator())
             else if (_models.isNotEmpty) ...[
-              TextFormField(
+              _CampoComOpcoesModal(
                 controller: _modelFilterCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Modelo FIPE (digite ou role abaixo)',
-                  prefixIcon: const Icon(Icons.directions_car),
-                  suffixIcon: _modelFilterCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () => setState(() => _modelFilterCtrl.clear()),
-                        )
-                      : null,
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              _CaixaOpcoesRolavel(
+                labelText: 'Modelo FIPE',
+                prefixIcon: Icons.directions_car,
                 opcoes: _models.map((m) => m.name).toList(),
                 valorSelecionado: _selectedModel?.name ?? '',
-                filtroTexto: _modelFilterCtrl.text,
-                rotuloCabecalho: 'Modelos FIPE (role 5 por vez)',
+                aoDigitar: (_) => setState(() {}),
+                aoLimpar: () => setState(() => _modelFilterCtrl.clear()),
                 aoSelecionar: (nome) {
                   final m = _models.firstWhere((x) => x.name == nome);
                   _loadYears(m);
@@ -3689,29 +3702,18 @@ class _FipeLookupSheetState extends State<_FipeLookupSheet> {
             ],
             const SizedBox(height: 12),
 
-            // ANO / VERSÃO FIPE COM BLOQUINHO DE 5 OPÇÕES
+            // ANO / VERSÃO FIPE COM MODAL DE 5 OPÇÕES AO CLICAR
             if (_loadingYears)
               const Center(child: CircularProgressIndicator())
             else if (_years.isNotEmpty) ...[
-              TextFormField(
+              _CampoComOpcoesModal(
                 controller: _yearFilterCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Ano / Versão FIPE (digite ou role abaixo)',
-                  prefixIcon: const Icon(Icons.calendar_today),
-                  suffixIcon: _yearFilterCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () => setState(() => _yearFilterCtrl.clear()),
-                        )
-                      : null,
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              _CaixaOpcoesRolavel(
+                labelText: 'Ano / Versão FIPE',
+                prefixIcon: Icons.calendar_today,
                 opcoes: _years.map((y) => y.name).toList(),
                 valorSelecionado: _selectedYear?.name ?? '',
-                filtroTexto: _yearFilterCtrl.text,
-                rotuloCabecalho: 'Anos / Versões FIPE (role 5 por vez)',
+                aoDigitar: (_) => setState(() {}),
+                aoLimpar: () => setState(() => _yearFilterCtrl.clear()),
                 aoSelecionar: (nome) {
                   final y = _years.firstWhere((x) => x.name == nome);
                   _loadPrice(y);
